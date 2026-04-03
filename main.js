@@ -2,6 +2,15 @@ const { app, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
+// ⭐️ 1. 마이크 권한 자동 허용
+app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
+
+// ⭐️ 2. 투명 창이 멈추는(프리징) 현상 완벽 방지 설정 (전부 추가)
+app.commandLine.appendSwitch('disable-renderer-backgrounding'); // 렌더러 잠듦 방지
+app.commandLine.appendSwitch('disable-background-timer-throttling'); // 타이머 지연 방지
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows', 'true');
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,WindowOcclusionPrediction');
+
 let win; // 창 객체를 전역 변수로 선언
 
 function createWindow() {
@@ -42,6 +51,7 @@ function createWindow() {
   // 창이 완전히 준비된 후 다시 한번 위치 고정 명령 (윈도우 버그 방지)
   win.once('ready-to-show', () => {
     win.show();
+    win.focus();
   });
 
   // 4. 창을 드래그해서 위치를 옮기거나, 앱을 끌 때 현재 좌표를 파일에 저장

@@ -588,3 +588,601 @@ startApp();
   bottom: 120 %;
   /* ... 나머지 스타일 ... */
 }
+
+
+
+
+
+
+
+
+
+
+
+
+export class SpeechHandler {
+  constructor(onResultCallback) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    this.recognition = new SpeechRecognition();
+    this.recognition.lang = 'ko-KR';
+    this.recognition.continuous = true;
+    this.recognition.interimResults = true; // 말하는 도중에도 인식
+    this.isRecording = false;
+
+    // ⭐️ 음성 인식 결과 처리 강화
+    this.recognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+
+      // 최종 결과가 있으면 최종을, 진행 중이면 진행 중인 텍스트를 전송
+      const text = finalTranscript || interimTranscript;
+      if (text.trim().length > 0) {
+        onResultCallback(text);
+      }
+    };
+
+    // ⭐️ 핵심 버그 해결: STT가 지멋대로 꺼지면 강제로 다시 켬
+    this.recognition.onend = () => {
+      if (this.isRecording) {
+        try { this.recognition.start(); } catch (e) { }
+      }
+    };
+
+    // 에러 발생 시 로그 확인용
+    this.recognition.onerror = (event) => {
+      console.error("🎤 STT 에러 발생:", event.error);
+    };
+  }
+
+  start() {
+    if (!this.isRecording) {
+      this.isRecording = true;
+      try { this.recognition.start(); } catch (e) { }
+    }
+  }
+
+  stop() {
+    if (this.isRecording) {
+      this.isRecording = false;
+      try { this.recognition.stop(); } catch (e) { }
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const { app, BrowserWindow } = require('electron');
+const fs = require('fs');
+const path = require('path');
+
+// ⭐️ 1. 보이지 않는 창에서 마이크 권한을 자동으로 허용하는 옵션 (가장 위쪽에 추가)
+app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
+// ⭐️ 2. 백그라운드에서 화면 렌더링이 멈추는 현상 방지
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows', 'true');
+
+let win;
+
+function createWindow() {
+  const configPath = path.join(app.getPath('userData'), 'window-bounds.json');
+  let savedBounds = {};
+
+  try {
+    if (fs.existsSync(configPath)) {
+      savedBounds = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+  } catch (e) { console.log('좌표 로드 실패'); }
+
+  win = new BrowserWindow({
+    width: 150,
+    height: 150,
+    x: savedBounds.x,
+    y: savedBounds.y,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    webPreferences: { nodeIntegration: true, contextIsolation: false }
+  });
+
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.setAlwaysOnTop(true, 'screen-saver');
+
+  win.loadFile('src/index.html');
+
+  // 창 생성 완료 후 로직
+  win.once('ready-to-show', () => {
+    win.show();
+    win.focus(); // ⭐️ 3. 창을 강제로 클릭한 것과 같은 효과를 주어 렌더링 시작
+  });
+
+  const saveWindowPosition = () => {
+    const bounds = win.getBounds();
+    fs.writeFileSync(configPath, JSON.stringify(bounds));
+  };
+
+  win.on('moved', saveWindowPosition);
+  win.on('close', saveWindowPosition);
+}
+
+app.commandLine.appendSwitch('disable-features', 'WindowOcclusionPrediction');
+app.whenReady().then(createWindow);
+
+
+
+
+
+
+const { app, BrowserWindow } = require('electron');
+const fs = require('fs');
+const path = require('path');
+
+// ⭐️ 1. 마이크 권한 자동 허용
+app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
+
+// ⭐️ 2. 투명 창이 멈추는(프리징) 현상 완벽 방지 설정 (전부 추가)
+app.commandLine.appendSwitch('disable-renderer-backgrounding'); // 렌더러 잠듦 방지
+app.commandLine.appendSwitch('disable-background-timer-throttling'); // 타이머 지연 방지
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows', 'true');
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,WindowOcclusionPrediction');
+
+let win;
+// ... (아래 createWindow 등의 코드는 기존과 동일하게 유지) ...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export class SpeechHandler {
+  constructor(onResultCallback) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    this.recognition = new SpeechRecognition();
+    this.recognition.lang = 'ko-KR';
+    this.recognition.continuous = true;
+    this.recognition.interimResults = true;
+    this.isRecording = false;
+    this.isNetworkError = false; // ⭐️ 네트워크 차단 상태 확인용 변수
+
+    this.recognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+
+      const text = finalTranscript || interimTranscript;
+      if (text.trim().length > 0) {
+        onResultCallback(text);
+      }
+    };
+
+    this.recognition.onend = () => {
+      // ⭐️ 일반적인 종료일 때만 바로 재시작 (네트워크 에러일 땐 onerror에서 처리)
+      if (this.isRecording && !this.isNetworkError) {
+        try { this.recognition.start(); } catch (e) { }
+      }
+    };
+
+    this.recognition.onerror = (event) => {
+      console.warn("🎤 STT 상태:", event.error);
+
+      // ⭐️ 구글 서버에서 차단(network) 당했을 때의 방어 로직
+      if (event.error === 'network' || event.error === 'not-allowed') {
+        this.isNetworkError = true;
+
+        // 1초 뒤에 다시 슬쩍 연결 시도 (서버 과부하 차단 회피)
+        setTimeout(() => {
+          this.isNetworkError = false;
+          if (this.isRecording) {
+            try { this.recognition.start(); } catch (e) { }
+          }
+        }, 1000);
+      }
+    };
+  }
+
+  start() {
+    if (!this.isRecording) {
+      this.isRecording = true;
+      this.isNetworkError = false;
+      try { this.recognition.start(); } catch (e) { }
+    }
+  }
+
+  stop() {
+    if (this.isRecording) {
+      this.isRecording = false;
+      try { this.recognition.stop(); } catch (e) { }
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+function loop() {
+  const result = tracker.checkGaze();
+
+  if (result) {
+    if (result.msg === "얼굴 없음") {
+      statusText.innerText = "얼굴을 보여주세요";
+      statusText.style.color = "gray";
+      speechBubble.style.display = 'none';
+      speech.stop();
+    } else if (result.active) {
+      // 바라보고 있을 때
+      if (!speech.isRecording) {
+        statusText.innerText = "🎙️ 듣는 중...";
+        statusText.style.color = "#4ade80";
+        speechBubble.innerText = "듣고 있어요...";
+        speechBubble.style.display = 'block';
+        speech.start();
+      }
+    } else {
+      // 딴 곳을 볼 때
+      if (speech.isRecording) {
+        statusText.innerText = "딴 곳 보는 중";
+        statusText.style.color = "gray";
+        speechBubble.style.display = 'none';
+        speechBubble.innerText = "";
+        speech.stop();
+      }
+    }
+  }
+  // ⭐️ 기존에 있던 requestAnimationFrame(loop); 는 반드시 지워주세요!
+}
+
+async function startApp() {
+  try {
+    console.log("🚀 앱 시작 시퀀스 가동...");
+    statusText.innerText = "AI 로딩 중...";
+
+    await tracker.init();
+    console.log("✅ AI 모델 준비 완료");
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480 }
+    });
+    video.srcObject = stream;
+
+    video.onloadedmetadata = () => {
+      video.play();
+      console.log("🎥 카메라 재생 시작");
+      statusText.innerText = "준비 완료!";
+
+      // ⭐️ 핵심 해결책: requestAnimationFrame 대신 무조건 0.1초마다 강제 실행!
+      // 이렇게 하면 백그라운드나 투명 창에서도 절대 멈추지 않습니다.
+      setInterval(loop, 100);
+    };
+
+  } catch (err) {
+    statusText.innerText = "초기화 에러!";
+    console.error("❌ 앱 시작 중 치명적 오류:", err);
+  }
+}
+
+startApp();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+this.recognition.onerror = (event) => {
+  console.warn("🎤 STT 에러 발생:", event.error);
+
+  // 구글 서버 차단 방어
+  if (event.error === 'network' || event.error === 'not-allowed') {
+    this.isNetworkError = true;
+    this.isRecording = false; // 일단 녹음 상태를 강제로 끕니다
+
+    const bubble = document.getElementById('speech-bubble');
+    if (bubble) bubble.innerText = "서버 연결 지연 중... (잠시 후 다시 시도합니다)";
+
+    // ⭐️ 3초(3000ms) 대기 후 네트워크 에러 상태 초기화 (서버 화 달래기)
+    setTimeout(() => {
+      this.isNetworkError = false;
+    }, 3000);
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { FaceTracker } from './faceTracker.js';
+import { SpeechHandler } from './speechHandler.js';
+
+const statusText = document.getElementById('status-text');
+const speechBubble = document.getElementById('speech-bubble');
+const video = document.getElementById('webcam');
+
+const speech = new SpeechHandler((text) => {
+  if (text.trim().length > 0) {
+    speechBubble.innerText = text;
+    speechBubble.style.display = 'block';
+  }
+});
+
+const tracker = new FaceTracker(video);
+
+// ⭐️ 시선 이탈 유예 시간을 위한 타이머 변수 설정
+let gazeTimeout = null;
+const GRACE_PERIOD_MS = 3000; // 3초 (원하시면 5000으로 늘려도 됩니다)
+
+// ⭐️ 시선을 돌렸을 때 처리하는 함수 따로 분리
+function handleLookAway() {
+  // 녹음 중인데 아직 타이머가 안 돌고 있다면? -> 타이머 시작!
+  if (speech.isRecording && gazeTimeout === null) {
+    statusText.innerText = "👀 잠깐 딴 곳 보는 중...";
+    statusText.style.color = "#facc15"; // 노란색으로 대기 상태 표시
+
+    // 3초 뒤에 진짜로 녹음 종료
+    gazeTimeout = setTimeout(() => {
+      statusText.innerText = "대기 상태";
+      statusText.style.color = "gray";
+      speechBubble.style.display = 'none';
+      speechBubble.innerText = "";
+      speech.stop();
+      gazeTimeout = null; // 타이머 초기화
+    }, GRACE_PERIOD_MS);
+  }
+}
+
+function loop() {
+  const result = tracker.checkGaze();
+
+  if (result) {
+    if (result.msg === "얼굴 없음") {
+      handleLookAway(); // 얼굴이 사라져도 3초는 기다려줌
+    } else if (result.active) {
+      // 🎯 위젯을 쳐다봤을 때!
+
+      // 1. 혹시 돌고 있던 종료 타이머가 있다면 취소 (계속 대화 이어가기)
+      if (gazeTimeout !== null) {
+        clearTimeout(gazeTimeout);
+        gazeTimeout = null;
+      }
+
+      // 2. 마이크 켜기 및 상태 업데이트
+      if (!speech.isRecording) {
+        statusText.innerText = "🎙️ 듣는 중...";
+        statusText.style.color = "#4ade80"; // 초록색
+        speechBubble.innerText = "듣고 있어요...";
+        speechBubble.style.display = 'block';
+        speech.start();
+      } else {
+        // 이미 켜져 있다면 글씨 색상만 초록색으로 확실히 복구
+        statusText.innerText = "🎙️ 듣는 중...";
+        statusText.style.color = "#4ade80";
+      }
+
+    } else {
+      // 딴 곳을 볼 때
+      handleLookAway();
+    }
+  }
+}
+
+// ... (아래 startApp() 함수 부분은 기존과 동일하게 유지하시면 됩니다) ...
+async function startApp() {
+  try {
+    console.log("🚀 앱 시작 시퀀스 가동...");
+    statusText.innerText = "AI 로딩 중...";
+
+    await tracker.init();
+    console.log("✅ AI 모델 준비 완료");
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480 }
+    });
+    video.srcObject = stream;
+
+    video.onloadedmetadata = () => {
+      video.play();
+      console.log("🎥 카메라 재생 시작");
+      statusText.innerText = "준비 완료!";
+
+      setInterval(loop, 100);
+    };
+
+  } catch (err) {
+    statusText.innerText = "초기화 에러!";
+    console.error("❌ 앱 시작 중 치명적 오류:", err);
+  }
+}
+
+startApp();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ... 기존 변수 설정 유지 ...
+
+let gazeTimeout = null;
+const GRACE_PERIOD_MS = 3000; // 3초 대기
+
+// ⭐️ 현재 루프 속도를 결정하는 변수 (기본 100ms)
+let loopDelay = 100;
+
+function handleLookAway() {
+  if (speech.isRecording && gazeTimeout === null) {
+    statusText.innerText = "👀 잠깐 딴 곳 보는 중...";
+    statusText.style.color = "#facc15";
+
+    gazeTimeout = setTimeout(() => {
+      statusText.innerText = "대기 상태";
+      statusText.style.color = "gray";
+      speechBubble.style.display = 'none';
+      speechBubble.innerText = "";
+      speech.stop();
+      gazeTimeout = null;
+    }, GRACE_PERIOD_MS);
+  }
+}
+
+function loop() {
+  const result = tracker.checkGaze();
+
+  if (result) {
+    if (result.msg === "얼굴 없음") {
+      handleLookAway();
+      loopDelay = 100; // 얼굴이 없으면 빨리빨리 탐색 (0.1초)
+    } else if (result.active) {
+      // 🎯 위젯을 쳐다봤을 때!
+      if (gazeTimeout !== null) {
+        clearTimeout(gazeTimeout);
+        gazeTimeout = null;
+      }
+
+      if (!speech.isRecording) {
+        statusText.innerText = "🎙️ 듣는 중...";
+        statusText.style.color = "#4ade80";
+        speechBubble.innerText = "듣고 있어요...";
+        speechBubble.style.display = 'block';
+        speech.start();
+      } else {
+        statusText.innerText = "🎙️ 듣는 중...";
+        statusText.style.color = "#4ade80";
+      }
+
+      // ⭐️ 핵심: 이미 나를 보고 대화 중이라면 CPU 낭비 방지를 위해 
+      // 감시 주기를 0.5초(500ms)로 확 늦춥니다. (루프가 잠깐 멈추는 효과)
+      loopDelay = 500;
+
+    } else {
+      // 딴 곳을 볼 때
+      handleLookAway();
+      // 시선이 벗어나면 언제 다시 돌아올지 모르니 다시 빨리빨리 탐색 (0.1초)
+      loopDelay = 100;
+    }
+  }
+
+  // ⭐️ setInterval 대신, 상태에 따라 변하는 loopDelay만큼 기다렸다가 자기 자신을 다시 호출
+  setTimeout(loop, loopDelay);
+}
+
+async function startApp() {
+  try {
+    statusText.innerText = "AI 로딩 중...";
+    await tracker.init();
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480 }
+    });
+    video.srcObject = stream;
+
+    video.onloadedmetadata = () => {
+      video.play();
+      statusText.innerText = "준비 완료!";
+
+      // ⭐️ 시작할 때 단 한 번만 loop를 찔러주면, 그 뒤론 알아서 속도를 조절하며 돕니다.
+      loop();
+    };
+
+  } catch (err) {
+    statusText.innerText = "초기화 에러!";
+    console.error(err);
+  }
+}
+
+startApp();
