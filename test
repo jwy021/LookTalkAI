@@ -305,3 +305,286 @@ function loop() {
 }
 
 startApp();
+
+
+
+___________________________________
+import { FaceTracker } from './faceTracker.js';
+import { SpeechHandler } from './speechHandler.js';
+
+const statusText = document.getElementById('status-text');
+const video = document.getElementById('webcam');
+
+// 1. 음성 인식기 생성
+const speech = new SpeechHandler((text) => {
+  statusText.innerText = text;
+});
+
+// 2. 얼굴 추적기 생성
+const tracker = new FaceTracker(video);
+
+// 메인 루프 함수
+function loop() {
+  const result = tracker.checkGaze();
+
+  if (result) {
+    if (result.msg === "얼굴 없음") {
+      statusText.innerText = "얼굴을 보여주세요";
+      statusText.style.color = "gray";
+      speech.stop();
+    } else if (result.active) {
+      // 바라보고 있을 때
+      if (!speech.isRecording) {
+        statusText.innerText = "🎙️ 듣는 중...";
+        statusText.style.color = "#4ade80";
+        speech.start();
+      }
+    } else {
+      // 딴 곳을 볼 때
+      if (speech.isRecording) {
+        statusText.innerText = "딴 곳 보는 중";
+        statusText.style.color = "gray";
+        speech.stop();
+      }
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+async function startApp() {
+  try {
+    console.log("🚀 앱 시작 시퀀스 가동...");
+    statusText.innerText = "AI 로딩 중...";
+
+    await tracker.init();
+    console.log("✅ AI 모델 준비 완료");
+
+    // 카메라 권한 요청 및 연결
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480 }
+    });
+    video.srcObject = stream;
+
+    // ⭐️ 핵심: 비디오가 실제로 재생될 수 있는 상태가 되면 루프 시작
+    video.onloadedmetadata = () => {
+      video.play();
+      console.log("🎥 카메라 재생 시작");
+      statusText.innerText = "준비 완료!";
+      loop(); // 루프 강제 시작
+    };
+
+  } catch (err) {
+    statusText.innerText = "초기화 에러!";
+    console.error("❌ 앱 시작 중 치명적 오류:", err);
+  }
+}
+
+// 앱 실행
+startApp();
+
+
+
+__________________________
+/* 기존 body 설정 유지 */
+body {
+  margin: 0;
+  overflow: hidden;
+  display: flex;
+  justify - content: center;
+  align - items: center;
+  height: 100vh;
+  background - color: transparent;
+}
+
+.widget {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  background: radial - gradient(circle, #2c3e50, #000000); /* 입체감 있는 배경 */
+  border - radius: 50 %;
+  color: white;
+  display: flex;
+  flex - direction: column;
+  justify - content: center;
+  align - items: center;
+  font - family: 'Pretendard', sans - serif;
+  box - shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  border: 2px solid #444;
+  -webkit - app - region: drag;
+  user - select: none;
+  cursor: grab;
+  transition: all 0.3s ease;
+}
+
+/* ⭐️ 말풍선 스타일 추가 */
+.bubble {
+  position: absolute;
+  bottom: 110 %; /* 위젯 살짝 위로 띄움 */
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  padding: 10px 15px;
+  border - radius: 20px;
+  font - size: 14px;
+  max - width: 250px; /* 말풍선 최대 너비 */
+  min - width: 80px;
+  text - align: center;
+  box - shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  display: none; /* 기본은 숨김 */
+  word -break: break-all;
+  z - index: 100;
+  -webkit - app - region: no - drag; /* 말풍선 안의 글씨는 드래그 방해 안 되게 */
+}
+
+/* 말풍선 꼬리표 */
+.bubble::after {
+  content: '';
+  position: absolute;
+  top: 100 %;
+  left: 50 %;
+  margin - left: -10px;
+  border - width: 10px;
+  border - style: solid;
+  border - color: rgba(255, 255, 255, 0.95) transparent transparent transparent;
+}
+
+.widget h3 {
+  font - size: 16px;
+  margin: 0;
+  pointer - events: none;
+}
+
+#status - text {
+  font - size: 12px;
+  margin - top: 5px;
+  opacity: 0.8;
+  pointer - events: none;
+}
+
+
+
+
+
+
+// SpeechHandler 콜백 부분
+const speech = new SpeechHandler((text) => {
+  const bubble = document.getElementById('speech-bubble');
+  bubble.innerText = text; // 내 목소리를 말풍선에 출력
+  bubble.style.display = 'block'; // 말풍선 보이기
+});
+
+// loop() 함수 내 '딴 곳 보는 중'일 때
+if (speech.isRecording) {
+  const bubble = document.getElementById('speech-bubble');
+  bubble.style.display = 'none'; // 말풍선 숨기기
+  bubble.innerText = ""; // 내용 초기화
+  speech.stop();
+}
+
+
+
+
+
+
+
+
+import { FaceTracker } from './faceTracker.js';
+import { SpeechHandler } from './speechHandler.js';
+
+const statusText = document.getElementById('status-text');
+const speechBubble = document.getElementById('speech-bubble'); // 전역으로 미리 선언
+const video = document.getElementById('webcam');
+
+// 1. 음성 인식기 생성
+const speech = new SpeechHandler((text) => {
+  // 음성 데이터가 들어올 때만 말풍선을 노출
+  if (text.trim().length > 0) {
+    speechBubble.innerText = text;
+    speechBubble.style.display = 'block';
+  }
+});
+
+const tracker = new FaceTracker(video);
+
+function loop() {
+  const result = tracker.checkGaze();
+
+  if (result) {
+    if (result.msg === "얼굴 없음") {
+      statusText.innerText = "얼굴을 보여주세요";
+      statusText.style.color = "gray";
+      speechBubble.style.display = 'none'; // 얼굴 없으면 말풍선 숨김
+      speech.stop();
+    } else if (result.active) {
+      // 바라보고 있을 때
+      if (!speech.isRecording) {
+        statusText.innerText = "🎙️ 듣는 중...";
+        statusText.style.color = "#4ade80";
+        speechBubble.innerText = "듣고 있어요..."; // 초기 가이드 텍스트
+        speechBubble.style.display = 'block';
+        speech.start();
+      }
+    } else {
+      // 딴 곳을 볼 때
+      if (speech.isRecording) {
+        statusText.innerText = "딴 곳 보는 중";
+        statusText.style.color = "gray";
+        speechBubble.style.display = 'none'; // 시선 돌리면 즉시 숨김
+        speechBubble.innerText = "";
+        speech.stop();
+      }
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+async function startApp() {
+  try {
+    console.log("🚀 앱 시작 시퀀스 가동...");
+    statusText.innerText = "AI 로딩 중...";
+
+    await tracker.init();
+    console.log("✅ AI 모델 준비 완료");
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480 }
+    });
+    video.srcObject = stream;
+
+    video.onloadedmetadata = () => {
+      video.play();
+      console.log("🎥 카메라 재생 시작");
+      statusText.innerText = "준비 완료!";
+      loop();
+    };
+
+  } catch (err) {
+    statusText.innerText = "초기화 에러!";
+    console.error("❌ 앱 시작 중 치명적 오류:", err);
+  }
+}
+
+startApp();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* main.css에 이 내용이 정확히 있는지 확인하세요 */
+.bubble {
+  display: none; /* JS에서 block으로 바꿀 예정 */
+  pointer - events: none; /* 말풍선이 마우스를 방해하지 않게 */
+  position: absolute;
+  bottom: 120 %;
+  /* ... 나머지 스타일 ... */
+}

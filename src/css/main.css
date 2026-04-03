@@ -9,7 +9,44 @@ body {
     /* 배경 투명 */
 }
 
+/* ⭐️ 말풍선 스타일 (위젯 위에 배치) */
+.bubble {
+    position: absolute;
+    bottom: 120%;
+    /* 위젯에서 위로 띄움 */
+    background: rgba(255, 255, 255, 0.9);
+    color: #000;
+    padding: 12px 18px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    max-width: 200px;
+    min-width: 50px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    word-break: break-all;
+    display: none;
+    /* 기본은 숨김 */
+    z-index: 999;
+    /* 말풍선 자체는 드래그되지 않도록 설정 (선택사항) */
+    -webkit-app-region: no-drag;
+}
+
+/* 말풍선 꼬리표 */
+.bubble::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 10px;
+    border-style: solid;
+    border-color: rgba(255, 255, 255, 0.9) transparent transparent transparent;
+}
+
 .widget {
+    position: relative;
+    /* 말풍선 배치를 위한 기준점 */
     width: 150px;
     height: 150px;
     background-color: rgba(0, 0, 0, 0.8);
@@ -23,14 +60,19 @@ body {
 
     /* ⭐️ 드래그 활성화 */
     -webkit-app-region: drag;
-    /* ⭐️ 글씨 선택 방지 (드래그 방해 요소 제거) */
+    /* ⭐️ 글씨 선택 방지 */
     user-select: none;
     cursor: grab;
 }
 
-/* ⭐️ 위젯 내부의 글씨들이 마우스 클릭을 가로채지 못하게 설정 */
+/* ⭐️ 위젯 내부 요소들이 마우스 클릭 가로채지 못하게 설정 */
+.widget h3,
+.widget p,
+.bubble {
+    pointer-events: none;
+}
+
 .widget h3,
 .widget p {
-    pointer-events: none;
     margin: 5px 0;
 }
