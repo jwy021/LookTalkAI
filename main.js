@@ -20,13 +20,13 @@ function createWindow() {
 
   // 3. 창 생성 (저장된 x, y 좌표가 있으면 적용하고, 없으면 기본값으로 화면 가운데 띄움)
   win = new BrowserWindow({
-    width: 150,        
+    width: 150,
     height: 150,
     x: savedBounds.x,  // ⭐️ 불러온 X 좌표
     y: savedBounds.y,  // ⭐️ 불러온 Y 좌표
-    transparent: true, 
-    frame: false,      
-    alwaysOnTop: true, 
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
     skipTaskbar: true,
     webPreferences: { nodeIntegration: true, contextIsolation: false }
   });
