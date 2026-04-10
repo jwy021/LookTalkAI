@@ -21,6 +21,7 @@ const clearHistoryButton = document.getElementById('clear-history-button');
 const settingsPanel = document.getElementById('settings-panel');
 const paletteOptions = Array.from(document.querySelectorAll('.palette-option'));
 const personalityOptions = Array.from(document.querySelectorAll('.personality-option'));
+const settingPills = Array.from(document.querySelectorAll('.setting-pill'));
 const leftEye = document.getElementById('left-eye');
 const rightEye = document.getElementById('right-eye');
 const leftPupil = document.getElementById('left-pupil');
@@ -38,6 +39,22 @@ let conversationHistory = [];
 let isSpeechTriggerLocked = false;
 let currentPalette = 'mint';
 let currentPersonality = 'calm';
+let cameraStream = null;
+let hasStartedLoop = false;
+let handRaisedSince = 0;
+let speechTriggerCooldownUntil = 0;
+
+const historyStorageKey = 'looktalk.history';
+const settingsStorageKey = 'looktalk.settings';
+const handTriggerHoldMs = 350;
+const handTriggerCooldownMs = 1500;
+const defaultSettings = {
+  bubbleDurationMs: 5000,
+  responseLength: 'short',
+  voiceTriggerEnabled: true,
+  historyPersistenceEnabled: true
+};
+let appSettings = { ...defaultSettings };
 
 const paletteThemes = {
   mint: {
@@ -80,12 +97,22 @@ function escapeHtml(text) {
     .replaceAll("'", '&#39;');
 }
 
+function saveConversationHistory() {
+  if (!appSettings.historyPersistenceEnabled) {
+    localStorage.removeItem(historyStorageKey);
+    return;
+  }
+
+  localStorage.setItem(historyStorageKey, JSON.stringify(conversationHistory.slice(-30)));
+}
+
 function addConversationMessage(role, text) {
   const trimmedText = text.trim();
   if (!trimmedText) return;
 
   conversationHistory.push({ role, text: trimmedText });
   renderConversationHistory();
+  saveConversationHistory();
 }
 
 function renderConversationHistory() {
@@ -117,10 +144,34 @@ function toggleHistoryDrawer() {
   ipcRenderer.send('set-history-drawer-open', willOpen);
 }
 
+function updateAppSetting(key, value) {
+  appSettings = {
+    ...appSettings,
+    [key]: value
+  };
+  localStorage.setItem(settingsStorageKey, JSON.stringify(appSettings));
+}
+
 function updateSelectionState(buttons, selectedValue, attributeName) {
   buttons.forEach((button) => {
     const isSelected = button.dataset[attributeName] === selectedValue;
     button.classList.toggle('selected', isSelected);
+  });
+}
+
+function updateSettingSelectionState(key) {
+  settingPills.forEach((button) => {
+    const isSameSetting = button.dataset.settingKey === key;
+    if (!isSameSetting) return;
+
+    let normalizedValue = button.dataset.settingValue;
+    if (normalizedValue === 'true') normalizedValue = true;
+    if (normalizedValue === 'false') normalizedValue = false;
+    if (['3000', '5000', '8000'].includes(button.dataset.settingValue)) {
+      normalizedValue = Number(button.dataset.settingValue);
+    }
+
+    button.classList.toggle('selected', appSettings[key] === normalizedValue);
   });
 }
 
@@ -153,8 +204,55 @@ function toggleSettingsPanel() {
 function loadSavedSettings() {
   const savedPalette = localStorage.getItem('looktalk.palette') || 'mint';
   const savedPersonality = localStorage.getItem('looktalk.personality') || 'calm';
+  const savedSettings = JSON.parse(localStorage.getItem(settingsStorageKey) || 'null');
+  appSettings = {
+    ...defaultSettings,
+    ...(savedSettings || {})
+  };
   applyPalette(savedPalette);
   applyPersonality(savedPersonality);
+  updateSettingSelectionState('responseLength');
+  updateSettingSelectionState('bubbleDurationMs');
+  updateSettingSelectionState('voiceTriggerEnabled');
+  updateSettingSelectionState('historyPersistenceEnabled');
+}
+
+function loadConversationHistory() {
+  if (!appSettings.historyPersistenceEnabled) {
+    conversationHistory = [];
+    renderConversationHistory();
+    return;
+  }
+
+  const savedHistory = JSON.parse(localStorage.getItem(historyStorageKey) || '[]');
+  conversationHistory = Array.isArray(savedHistory) ? savedHistory : [];
+  renderConversationHistory();
+}
+
+async function startCameraStream() {
+  if (cameraStream) {
+    return;
+  }
+
+  // 음성 트리거가 켜졌을 때만 카메라를 다시 연다.
+  cameraStream = await navigator.mediaDevices.getUserMedia({
+    video: { width: 640, height: 480 }
+  });
+
+  video.srcObject = cameraStream;
+  await video.play();
+  console.log('🎥 카메라 재생 시작');
+}
+
+function stopCameraStream() {
+  if (!cameraStream) {
+    return;
+  }
+
+  cameraStream.getTracks().forEach((track) => track.stop());
+  cameraStream = null;
+  video.pause();
+  video.srcObject = null;
 }
 
 // 준비 가능 여부를 안테나 색으로만 표시한다.
@@ -297,7 +395,7 @@ function showResponseBubble(text, onTypingComplete) {
           speechBubble.innerHTML = '';
         }, 400);
         bubbleTimerId = null;
-      }, 5000);
+      }, appSettings.bubbleDurationMs);
     }
   }
 
@@ -390,7 +488,8 @@ async function requestAiResponse(userText) {
   try {
     const response = await ipcRenderer.invoke('generate-ai-response', {
       userText: trimmedText,
-      personality: currentPersonality
+      personality: currentPersonality,
+      responseLength: appSettings.responseLength
     });
 
     if (!response?.ok) {
@@ -480,6 +579,7 @@ toggleInputButton.addEventListener('click', () => {
 clearHistoryButton.addEventListener('click', () => {
   conversationHistory = [];
   renderConversationHistory();
+  saveConversationHistory();
 });
 
 // 얼굴을 누르면 설정 패널을 토글한다.
@@ -497,6 +597,51 @@ paletteOptions.forEach((button) => {
 personalityOptions.forEach((button) => {
   button.addEventListener('click', () => {
     applyPersonality(button.dataset.personality);
+  });
+});
+
+settingPills.forEach((button) => {
+  button.addEventListener('click', async () => {
+    const { settingKey, settingValue } = button.dataset;
+    let normalizedValue = settingValue;
+
+    if (settingValue === 'true') normalizedValue = true;
+    if (settingValue === 'false') normalizedValue = false;
+    if (['3000', '5000', '8000'].includes(settingValue)) {
+      normalizedValue = Number(settingValue);
+    }
+
+    updateAppSetting(settingKey, normalizedValue);
+    updateSettingSelectionState(settingKey);
+
+    if (settingKey === 'historyPersistenceEnabled') {
+      if (!normalizedValue) {
+        conversationHistory = [];
+        renderConversationHistory();
+      }
+      saveConversationHistory();
+    }
+
+    if (settingKey === 'voiceTriggerEnabled') {
+      handRaisedSince = 0;
+      speechTriggerCooldownUntil = 0;
+
+      if (!normalizedValue) {
+        speech.stop();
+        stopCameraStream();
+        setReadinessState(false);
+        setRobotState('idle');
+      } else {
+        try {
+          await startCameraStream();
+        } catch (error) {
+          console.error('❌ 카메라 재시작 실패:', error);
+          updateAppSetting('voiceTriggerEnabled', false);
+          updateSettingSelectionState('voiceTriggerEnabled');
+          stopCameraStream();
+        }
+      }
+    }
   });
 });
 
@@ -523,12 +668,25 @@ textInput.addEventListener('keydown', async (event) => {
 // 메인 루프
 // ══════════════════════════════════════════════
 function loop() {
+  if (!appSettings.voiceTriggerEnabled) {
+    handRaisedSince = 0;
+    if (!isGeneratingResponse && !speech.isRecording) {
+      setRobotState('idle');
+      setReadinessState(false);
+    }
+    requestAnimationFrame(loop);
+    return;
+  }
+
   const result = tracker.checkGaze();
+  const now = performance.now();
 
   if (result) {
     if (isListeningSessionActive || speech.isRecording) {
       // 듣는 중 상태는 setListeningSessionActive에서 관리
+      handRaisedSince = 0;
     } else if (result.msg === "얼굴 없음") {
+      handRaisedSince = 0;
       if (currentState !== 'thinking' &&
           currentState !== 'happy' &&
           currentState !== 'error') {
@@ -538,14 +696,25 @@ function loop() {
         statusText.style.color = 'transparent';
       }
     } else if (result.gazeActive && result.handRaised) {
-      if (!isListeningSessionActive &&
+      if (!handRaisedSince) {
+        // 손이 잠깐 스쳐도 바로 켜지지 않게 유지 시간을 본다.
+        handRaisedSince = now;
+      }
+
+      if (appSettings.voiceTriggerEnabled &&
+          now >= speechTriggerCooldownUntil &&
+          now - handRaisedSince >= handTriggerHoldMs &&
+          !isListeningSessionActive &&
           !speech.isRecording &&
           !speech.isStarting &&
           !isGeneratingResponse &&
           !isSpeechTriggerLocked) {
+        handRaisedSince = 0;
+        speechTriggerCooldownUntil = now + handTriggerCooldownMs;
         speech.start();
       }
     } else if (result.gazeActive) {
+      handRaisedSince = 0;
       if (!isListeningSessionActive && !speech.isRecording && !isGeneratingResponse) {
         setRobotState('idle');
         setReadinessState(true);
@@ -553,6 +722,7 @@ function loop() {
         statusText.style.color = 'transparent';
       }
     } else {
+      handRaisedSince = 0;
       if (!isListeningSessionActive && !speech.isRecording && !isGeneratingResponse) {
         setRobotState('idle');
         setReadinessState(false);
@@ -577,30 +747,26 @@ async function startApp() {
 
     await tracker.init();
     console.log("✅ AI 모델 준비 완료");
+    if (appSettings.voiceTriggerEnabled) {
+      await startCameraStream();
+    }
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480 }
-    });
-    video.srcObject = stream;
+    setRobotState('happy');
+    statusText.innerText = '';
+    statusText.style.color = 'transparent';
 
-    video.onloadedmetadata = () => {
-      video.play();
-      console.log("🎥 카메라 재생 시작");
-
-      setRobotState('happy');
+    setTimeout(() => {
+      setRobotState('idle');
+      setReadinessState(false);
       statusText.innerText = '';
       statusText.style.color = 'transparent';
+    }, 2500);
 
-      setTimeout(() => {
-        setRobotState('idle');
-        setReadinessState(false);
-        statusText.innerText = '';
-        statusText.style.color = 'transparent';
-      }, 2500);
-
-      startBlinking();
+    startBlinking();
+    if (!hasStartedLoop) {
+      hasStartedLoop = true;
       loop();
-    };
+    }
 
   } catch (err) {
     setRobotState('error');
@@ -612,6 +778,6 @@ async function startApp() {
 }
 
 setReadinessState(false);
-renderConversationHistory();
 loadSavedSettings();
+loadConversationHistory();
 startApp();

@@ -9,10 +9,13 @@ let cursorPollTimerId = null;
 let googleAccessTokenCache = null;
 let googleAccessTokenExpiresAt = 0;
 let googleQuotaProjectId = null;
+let isHistoryDrawerOpen = false;
+let isSettingsPanelOpen = false;
 const collapsedWindowWidth = 220;
 const expandedSettingsWindowWidth = 460;
 const collapsedWindowHeight = 350;
 const expandedWindowHeight = 540;
+const expandedSettingsWindowHeight = 680;
 
 function loadEnvFile() {
   const envPath = path.join(__dirname, '.env');
@@ -64,6 +67,16 @@ const personalityPrompts = {
   bright: '발랄하고 친근한 말투로 답해라.',
   tsundere: '조금 시크하지만 밉지 않은 말투로 답해라.',
   assistant: '정돈된 프로 비서 톤으로 답해라.'
+};
+const responseLengthConfigs = {
+  short: {
+    prompt: '한 문장 또는 아주 짧은 두 문장으로 답해라.',
+    maxTokens: 90
+  },
+  medium: {
+    prompt: '짧은 두세 문장 안에서 자연스럽게 답해라.',
+    maxTokens: 160
+  }
 };
 
 function toBase64Url(value) {
@@ -230,9 +243,10 @@ function extractResponseText(data) {
     .trim();
 }
 
-async function generateAiReply(userText, personality = 'calm') {
+async function generateAiReply(userText, personality = 'calm', responseLength = 'short') {
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   const personalityPrompt = personalityPrompts[personality] || personalityPrompts.calm;
+  const lengthConfig = responseLengthConfigs[responseLength] || responseLengthConfigs.short;
 
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.');
@@ -252,7 +266,8 @@ async function generateAiReply(userText, personality = 'calm') {
         systemInstruction: {
           parts: [
             {
-              text: `너는 짧고 자연스러운 한국어로 답하는 데스크톱 비서다. ${personalityPrompt} 한두 문장 이내로 간결하게 답해라.`
+              // 성격과 답변 길이를 함께 프롬프트에 반영한다.
+              text: `너는 짧고 자연스러운 한국어로 답하는 데스크톱 비서다. ${personalityPrompt} ${lengthConfig.prompt}`
             }
           ]
         },
@@ -268,7 +283,7 @@ async function generateAiReply(userText, personality = 'calm') {
         ],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 120
+          maxOutputTokens: lengthConfig.maxTokens
         }
       })
     }
@@ -290,6 +305,28 @@ async function generateAiReply(userText, personality = 'calm') {
   console.log('[LLM][OUTPUT]', replyText);
 
   return replyText;
+}
+
+function updateWindowBounds() {
+  if (!win || win.isDestroyed()) {
+    return;
+  }
+
+  const bounds = win.getBounds();
+  const nextWidth = isSettingsPanelOpen ? expandedSettingsWindowWidth : collapsedWindowWidth;
+  const nextHeight = Math.max(
+    collapsedWindowHeight,
+    isHistoryDrawerOpen ? expandedWindowHeight : collapsedWindowHeight,
+    isSettingsPanelOpen ? expandedSettingsWindowHeight : collapsedWindowHeight
+  );
+  const nextX = bounds.x - Math.round((nextWidth - bounds.width) / 2);
+
+  win.setBounds({
+    ...bounds,
+    x: nextX,
+    width: nextWidth,
+    height: nextHeight
+  });
 }
 
 function createWindow() {
@@ -366,37 +403,27 @@ function createWindow() {
 }
 
 ipcMain.on('set-history-drawer-open', (_event, isOpen) => {
-  if (!win || win.isDestroyed()) {
-    return;
-  }
-
-  const bounds = win.getBounds();
-  const nextHeight = isOpen ? expandedWindowHeight : collapsedWindowHeight;
-  win.setBounds({ ...bounds, height: nextHeight });
+  isHistoryDrawerOpen = isOpen;
+  updateWindowBounds();
 });
 
 ipcMain.on('set-settings-panel-open', (_event, isOpen) => {
-  if (!win || win.isDestroyed()) {
-    return;
-  }
-
-  const bounds = win.getBounds();
-  const nextWidth = isOpen ? expandedSettingsWindowWidth : collapsedWindowWidth;
-  const nextX = bounds.x - Math.round((nextWidth - bounds.width) / 2);
-  win.setBounds({ ...bounds, x: nextX, width: nextWidth });
+  isSettingsPanelOpen = isOpen;
+  updateWindowBounds();
 });
 
 ipcMain.handle('generate-ai-response', async (_event, payload) => {
   // 한글 입력이 비어 있으면 불필요한 호출을 막음
   const normalizedText = typeof payload?.userText === 'string' ? payload.userText.trim() : '';
   const personality = typeof payload?.personality === 'string' ? payload.personality : 'calm';
+  const responseLength = typeof payload?.responseLength === 'string' ? payload.responseLength : 'short';
 
   if (!normalizedText) {
     return { ok: false, error: '전송할 음성 텍스트가 없습니다.' };
   }
 
   try {
-    const reply = await generateAiReply(normalizedText, personality);
+    const reply = await generateAiReply(normalizedText, personality, responseLength);
     return { ok: true, reply };
   } catch (error) {
     console.error('❌ AI 응답 생성 실패:', error);
