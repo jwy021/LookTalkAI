@@ -9,6 +9,10 @@ let cursorPollTimerId = null;
 let googleAccessTokenCache = null;
 let googleAccessTokenExpiresAt = 0;
 let googleQuotaProjectId = null;
+const collapsedWindowWidth = 220;
+const expandedSettingsWindowWidth = 460;
+const collapsedWindowHeight = 350;
+const expandedWindowHeight = 540;
 
 function loadEnvFile() {
   const envPath = path.join(__dirname, '.env');
@@ -55,6 +59,12 @@ loadEnvFile();
 
 const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite-preview';
 const googleSpeechLanguageCode = process.env.GOOGLE_SPEECH_LANGUAGE_CODE || 'ko-KR';
+const personalityPrompts = {
+  calm: '차분하고 안정적인 말투로 답해라.',
+  bright: '발랄하고 친근한 말투로 답해라.',
+  tsundere: '조금 시크하지만 밉지 않은 말투로 답해라.',
+  assistant: '정돈된 프로 비서 톤으로 답해라.'
+};
 
 function toBase64Url(value) {
   return Buffer.from(value)
@@ -220,8 +230,9 @@ function extractResponseText(data) {
     .trim();
 }
 
-async function generateAiReply(userText) {
+async function generateAiReply(userText, personality = 'calm') {
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const personalityPrompt = personalityPrompts[personality] || personalityPrompts.calm;
 
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.');
@@ -241,7 +252,7 @@ async function generateAiReply(userText) {
         systemInstruction: {
           parts: [
             {
-              text: '너는 짧고 자연스러운 한국어로 답하는 데스크톱 비서다. 한두 문장 이내로 간결하게 답해라.'
+              text: `너는 짧고 자연스러운 한국어로 답하는 데스크톱 비서다. ${personalityPrompt} 한두 문장 이내로 간결하게 답해라.`
             }
           ]
         },
@@ -297,8 +308,8 @@ function createWindow() {
 
   // 3. 창 생성 (저장된 x, y 좌표가 있으면 적용하고, 없으면 기본값으로 화면 가운데 띄움)
   win = new BrowserWindow({
-    width: 220,
-    height: 350,
+    width: collapsedWindowWidth,
+    height: collapsedWindowHeight,
     x: savedBounds.x,  // ⭐️ 불러온 X 좌표
     y: savedBounds.y,  // ⭐️ 불러온 Y 좌표
     transparent: true,
@@ -354,16 +365,38 @@ function createWindow() {
   }, 33); // ~30fps
 }
 
-ipcMain.handle('generate-ai-response', async (_event, userText) => {
+ipcMain.on('set-history-drawer-open', (_event, isOpen) => {
+  if (!win || win.isDestroyed()) {
+    return;
+  }
+
+  const bounds = win.getBounds();
+  const nextHeight = isOpen ? expandedWindowHeight : collapsedWindowHeight;
+  win.setBounds({ ...bounds, height: nextHeight });
+});
+
+ipcMain.on('set-settings-panel-open', (_event, isOpen) => {
+  if (!win || win.isDestroyed()) {
+    return;
+  }
+
+  const bounds = win.getBounds();
+  const nextWidth = isOpen ? expandedSettingsWindowWidth : collapsedWindowWidth;
+  const nextX = bounds.x - Math.round((nextWidth - bounds.width) / 2);
+  win.setBounds({ ...bounds, x: nextX, width: nextWidth });
+});
+
+ipcMain.handle('generate-ai-response', async (_event, payload) => {
   // 한글 입력이 비어 있으면 불필요한 호출을 막음
-  const normalizedText = typeof userText === 'string' ? userText.trim() : '';
+  const normalizedText = typeof payload?.userText === 'string' ? payload.userText.trim() : '';
+  const personality = typeof payload?.personality === 'string' ? payload.personality : 'calm';
 
   if (!normalizedText) {
     return { ok: false, error: '전송할 음성 텍스트가 없습니다.' };
   }
 
   try {
-    const reply = await generateAiReply(normalizedText);
+    const reply = await generateAiReply(normalizedText, personality);
     return { ok: true, reply };
   } catch (error) {
     console.error('❌ AI 응답 생성 실패:', error);

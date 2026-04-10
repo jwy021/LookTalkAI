@@ -43,7 +43,8 @@ body {
 /* ── 말풍선 ── */
 .bubble {
     position: fixed;
-    top: 10px;
+    top: auto;
+    bottom: calc(100% - 132px);
     left: 50%;
     transform: translateX(-50%) scale(0.92);
     background: var(--bubble-bg);
@@ -55,15 +56,20 @@ body {
     font-weight: 700;
     max-width: 320px;
     min-width: 150px;
+    max-height: 150px;
     text-align: center;
     word-break: keep-all;
     line-height: 1.5;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     display: none;
     z-index: 999;
     opacity: 0;
     transition: opacity 0.35s ease, transform 0.35s ease;
     -webkit-app-region: no-drag;
     pointer-events: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(30, 31, 46, 0.18) transparent;
 }
 
 .bubble.visible {
@@ -84,6 +90,15 @@ body {
     border-color: var(--bubble-bg) transparent transparent transparent;
 }
 
+.bubble::-webkit-scrollbar {
+    width: 4px;
+}
+
+.bubble::-webkit-scrollbar-thumb {
+    background: rgba(30, 31, 46, 0.18);
+    border-radius: 999px;
+}
+
 /* ── 위젯 컨테이너 ── */
 .widget {
     position: relative;
@@ -92,6 +107,7 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 4px;
+    padding-bottom: 6px;
     -webkit-app-region: drag;
     cursor: grab;
 }
@@ -142,6 +158,99 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.settings-panel {
+    position: absolute;
+    top: 26px;
+    left: calc(100% + 6px);
+    width: 138px;
+    padding: 10px;
+    border-radius: 16px;
+    background: rgba(24, 33, 39, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    -webkit-app-region: no-drag;
+    z-index: 30;
+}
+
+.settings-panel::before {
+    content: '';
+    position: absolute;
+    top: 18px;
+    right: 100%;
+    border-width: 7px;
+    border-style: solid;
+    border-color: transparent rgba(24, 33, 39, 0.96) transparent transparent;
+}
+
+.settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-title {
+    font-size: 11px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.62);
+    letter-spacing: 0.2px;
+}
+
+.settings-options,
+.personality-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.palette-option {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+}
+
+.palette-option[data-palette="mint"] {
+    background: linear-gradient(135deg, #24313a 30%, #38d6b5 100%);
+}
+
+.palette-option[data-palette="coral"] {
+    background: linear-gradient(135deg, #3a2a30 30%, #ff7d7d 100%);
+}
+
+.palette-option[data-palette="lemon"] {
+    background: linear-gradient(135deg, #353127 30%, #f4cf4f 100%);
+}
+
+.palette-option[data-palette="blue"] {
+    background: linear-gradient(135deg, #243245 30%, #5eb6ff 100%);
+}
+
+.personality-option {
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 11px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.palette-option.selected,
+.personality-option.selected {
+    outline: 2px solid rgba(255, 255, 255, 0.82);
+    outline-offset: 1px;
+}
+
+.personality-option.selected {
+    color: white;
+    background: rgba(56, 214, 181, 0.14);
 }
 
 /* ══════════════════════════════════════════════
@@ -316,6 +425,8 @@ body {
         inset 0 2px 6px rgba(255, 255, 255, 0.04);
     border: 2px solid rgba(255, 255, 255, 0.06);
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    -webkit-app-region: no-drag;
+    cursor: pointer;
 }
 
 /* 상태별 테두리 글로우 */
@@ -693,9 +804,17 @@ body {
     transition: color 0.3s ease;
 }
 
-/* ── 입력 토글 버튼 ── */
-.toggle-input-button {
+/* ── 액션 버튼 줄 ── */
+.action-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin-top: -18px;
+    z-index: 8;
+    -webkit-app-region: no-drag;
+}
+
+.toggle-action-button {
     border: none;
     border-radius: 999px;
     width: 28px;
@@ -708,16 +827,24 @@ body {
     cursor: pointer;
     transition: all 0.25s ease;
     -webkit-app-region: no-drag;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
     border: 1px solid rgba(56, 214, 181, 0.1);
-    z-index: 8;
 }
 
-.toggle-input-button:hover {
+.toggle-action-button:hover {
     color: rgba(255, 255, 255, 0.95);
     transform: translateY(-2px) scale(1.04);
     background: rgba(56, 214, 181, 0.22);
     border-color: rgba(56, 214, 181, 0.18);
+}
+
+/* ── 입력 토글 버튼 ── */
+.toggle-input-button {
+    margin-top: 0;
+    z-index: auto;
+}
+
+.toggle-input-button:hover {
+    transform: translateY(-2px) scale(1.04);
 }
 
 /* ── 입력 행 ── */
@@ -726,7 +853,7 @@ body {
     display: flex;
     gap: 6px;
     align-items: center;
-    margin-top: -20px;
+    margin-top: -10px;
     -webkit-app-region: no-drag;
     opacity: 1;
     transform: translateY(0);
@@ -799,6 +926,103 @@ body {
 
 .hidden {
     display: none !important;
+}
+
+/* ── 세션 대화 기록 서랍 ── */
+.history-drawer {
+    width: 100%;
+    max-height: 188px;
+    margin-top: 6px;
+    padding: 10px 10px 12px;
+    border-radius: 18px;
+    background: rgba(24, 33, 39, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+    -webkit-app-region: no-drag;
+}
+
+.history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.clear-history-button {
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 10px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.clear-history-button:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 145px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.history-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.history-item.user {
+    align-items: flex-end;
+}
+
+.history-item.assistant {
+    align-items: flex-start;
+}
+
+.history-role {
+    font-size: 10px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.history-message {
+    max-width: 88%;
+    padding: 8px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    line-height: 1.45;
+    word-break: keep-all;
+}
+
+.history-item.user .history-message {
+    background: rgba(56, 214, 181, 0.16);
+    color: rgba(255, 255, 255, 0.9);
+    border-bottom-right-radius: 6px;
+}
+
+.history-item.assistant .history-message {
+    background: rgba(255, 255, 255, 0.9);
+    color: #1e1f2e;
+    border-bottom-left-radius: 6px;
+}
+
+.history-empty {
+    padding: 18px 0 10px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.4);
 }
 
 /* ── 녹음 중 펄스 (위젯 전체) ── */

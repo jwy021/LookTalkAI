@@ -14,6 +14,13 @@ const sendButton = document.getElementById('send-button');
 const sendIcon = document.getElementById('send-icon');
 const sendSpinner = document.getElementById('send-spinner');
 const toggleInputButton = document.getElementById('toggle-input-button');
+const toggleHistoryButton = document.getElementById('toggle-history-button');
+const historyDrawer = document.getElementById('history-drawer');
+const historyList = document.getElementById('history-list');
+const clearHistoryButton = document.getElementById('clear-history-button');
+const settingsPanel = document.getElementById('settings-panel');
+const paletteOptions = Array.from(document.querySelectorAll('.palette-option'));
+const personalityOptions = Array.from(document.querySelectorAll('.personality-option'));
 const leftEye = document.getElementById('left-eye');
 const rightEye = document.getElementById('right-eye');
 const leftPupil = document.getElementById('left-pupil');
@@ -27,6 +34,128 @@ let bubbleTimerId = null;
 let isListeningSessionActive = false;
 let blinkIntervalId = null;
 let typingTimerId = null;
+let conversationHistory = [];
+let isSpeechTriggerLocked = false;
+let currentPalette = 'mint';
+let currentPersonality = 'calm';
+
+const paletteThemes = {
+  mint: {
+    body: '#24313a',
+    face: '#182127',
+    accent: '#38d6b5',
+    accentGlow: 'rgba(56, 214, 181, 0.35)',
+    cheek: 'rgba(255, 146, 122, 0.35)'
+  },
+  coral: {
+    body: '#3a2a30',
+    face: '#24171c',
+    accent: '#ff7d7d',
+    accentGlow: 'rgba(255, 125, 125, 0.35)',
+    cheek: 'rgba(255, 189, 171, 0.38)'
+  },
+  lemon: {
+    body: '#353127',
+    face: '#221f17',
+    accent: '#f4cf4f',
+    accentGlow: 'rgba(244, 207, 79, 0.35)',
+    cheek: 'rgba(255, 177, 108, 0.34)'
+  },
+  blue: {
+    body: '#243245',
+    face: '#17212e',
+    accent: '#5eb6ff',
+    accentGlow: 'rgba(94, 182, 255, 0.35)',
+    cheek: 'rgba(255, 166, 166, 0.28)'
+  }
+};
+
+// 세션 대화는 렌더러 메모리에만 보관한다.
+function escapeHtml(text) {
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function addConversationMessage(role, text) {
+  const trimmedText = text.trim();
+  if (!trimmedText) return;
+
+  conversationHistory.push({ role, text: trimmedText });
+  renderConversationHistory();
+}
+
+function renderConversationHistory() {
+  if (conversationHistory.length === 0) {
+    historyList.innerHTML = '<p class="history-empty">대화가 아직 없어요.</p>';
+    return;
+  }
+
+  historyList.innerHTML = conversationHistory
+    .map(({ role, text }) => {
+      const roleLabel = role === 'user' ? '나' : 'AI';
+      const bubbleClass = role === 'user' ? 'user' : 'assistant';
+      return `
+        <div class="history-item ${bubbleClass}">
+          <span class="history-role">${roleLabel}</span>
+          <p class="history-message">${escapeHtml(text)}</p>
+        </div>
+      `;
+    })
+    .join('');
+
+  historyList.scrollTop = historyList.scrollHeight;
+}
+
+function toggleHistoryDrawer() {
+  const willOpen = historyDrawer.classList.contains('hidden');
+  historyDrawer.classList.toggle('hidden', !willOpen);
+  widget.setAttribute('data-history-open', willOpen ? 'true' : 'false');
+  ipcRenderer.send('set-history-drawer-open', willOpen);
+}
+
+function updateSelectionState(buttons, selectedValue, attributeName) {
+  buttons.forEach((button) => {
+    const isSelected = button.dataset[attributeName] === selectedValue;
+    button.classList.toggle('selected', isSelected);
+  });
+}
+
+function applyPalette(paletteName) {
+  const theme = paletteThemes[paletteName] || paletteThemes.mint;
+  currentPalette = paletteName in paletteThemes ? paletteName : 'mint';
+
+  // CSS 변수만 바꿔서 팔레트를 즉시 반영한다.
+  document.documentElement.style.setProperty('--robot-body', theme.body);
+  document.documentElement.style.setProperty('--robot-face', theme.face);
+  document.documentElement.style.setProperty('--accent', theme.accent);
+  document.documentElement.style.setProperty('--accent-glow', theme.accentGlow);
+  document.documentElement.style.setProperty('--cheek', theme.cheek);
+  updateSelectionState(paletteOptions, currentPalette, 'palette');
+  localStorage.setItem('looktalk.palette', currentPalette);
+}
+
+function applyPersonality(personality) {
+  currentPersonality = personality || 'calm';
+  updateSelectionState(personalityOptions, currentPersonality, 'personality');
+  localStorage.setItem('looktalk.personality', currentPersonality);
+}
+
+function toggleSettingsPanel() {
+  const willOpen = settingsPanel.classList.contains('hidden');
+  settingsPanel.classList.toggle('hidden', !willOpen);
+  ipcRenderer.send('set-settings-panel-open', willOpen);
+}
+
+function loadSavedSettings() {
+  const savedPalette = localStorage.getItem('looktalk.palette') || 'mint';
+  const savedPersonality = localStorage.getItem('looktalk.personality') || 'calm';
+  applyPalette(savedPalette);
+  applyPersonality(savedPersonality);
+}
 
 // 준비 가능 여부를 안테나 색으로만 표시한다.
 function setReadinessState(isReady) {
@@ -122,7 +251,7 @@ ipcRenderer.on('cursor-position', (_event, pos) => {
 // ══════════════════════════════════════════════
 // 말풍선 타이핑 효과
 // ══════════════════════════════════════════════
-function showResponseBubble(text) {
+function showResponseBubble(text, onTypingComplete) {
   if (typingTimerId) {
     clearTimeout(typingTimerId);
     typingTimerId = null;
@@ -157,6 +286,9 @@ function showResponseBubble(text) {
       const cursor = speechBubble.querySelector('.typing-cursor');
       if (cursor) cursor.remove();
       typingTimerId = null;
+      if (typeof onTypingComplete === 'function') {
+        onTypingComplete();
+      }
 
       bubbleTimerId = setTimeout(() => {
         speechBubble.classList.remove('visible');
@@ -246,19 +378,29 @@ async function requestAiResponse(userText) {
     return;
   }
 
+  // 사용자 발화도 같은 세션 서랍에 남긴다.
+  addConversationMessage('user', trimmedText);
+  // 답변 타이핑이 끝날 때까지 음성 트리거를 잠근다.
+  isSpeechTriggerLocked = true;
   setGeneratingState(true);
   setRobotState('thinking');
   statusText.innerText = '';
   statusText.style.color = 'transparent';
 
   try {
-    const response = await ipcRenderer.invoke('generate-ai-response', trimmedText);
+    const response = await ipcRenderer.invoke('generate-ai-response', {
+      userText: trimmedText,
+      personality: currentPersonality
+    });
 
     if (!response?.ok) {
       throw new Error(response?.error || 'AI 응답 생성에 실패했습니다.');
     }
 
-    showResponseBubble(response.reply);
+    showResponseBubble(response.reply, () => {
+      isSpeechTriggerLocked = false;
+    });
+    addConversationMessage('assistant', response.reply);
     setRobotState('happy');
     statusText.innerText = '';
     statusText.style.color = 'transparent';
@@ -272,7 +414,9 @@ async function requestAiResponse(userText) {
     }, 3500);
   } catch (error) {
     console.error('❌ 렌더러 AI 요청 실패:', error);
-    showResponseBubble('으앙... 오류가 났어요 😢');
+    showResponseBubble('으앙... 오류가 났어요 😢', () => {
+      isSpeechTriggerLocked = false;
+    });
     setRobotState('error');
     statusText.innerText = '';
     statusText.style.color = 'transparent';
@@ -325,8 +469,42 @@ function toggleTextInput() {
   textInput.value = '';
 }
 
+toggleHistoryButton.addEventListener('click', () => {
+  toggleHistoryDrawer();
+});
+
 toggleInputButton.addEventListener('click', () => {
   toggleTextInput();
+});
+
+clearHistoryButton.addEventListener('click', () => {
+  conversationHistory = [];
+  renderConversationHistory();
+});
+
+// 얼굴을 누르면 설정 패널을 토글한다.
+robotFace.addEventListener('click', (event) => {
+  event.stopPropagation();
+  toggleSettingsPanel();
+});
+
+paletteOptions.forEach((button) => {
+  button.addEventListener('click', () => {
+    applyPalette(button.dataset.palette);
+  });
+});
+
+personalityOptions.forEach((button) => {
+  button.addEventListener('click', () => {
+    applyPersonality(button.dataset.personality);
+  });
+});
+
+document.addEventListener('click', (event) => {
+  if (settingsPanel.classList.contains('hidden')) return;
+  if (settingsPanel.contains(event.target) || robotFace.contains(event.target)) return;
+  settingsPanel.classList.add('hidden');
+  ipcRenderer.send('set-settings-panel-open', false);
 });
 
 sendButton.addEventListener('click', async () => {
@@ -360,7 +538,11 @@ function loop() {
         statusText.style.color = 'transparent';
       }
     } else if (result.gazeActive && result.handRaised) {
-      if (!isListeningSessionActive && !speech.isRecording && !speech.isStarting) {
+      if (!isListeningSessionActive &&
+          !speech.isRecording &&
+          !speech.isStarting &&
+          !isGeneratingResponse &&
+          !isSpeechTriggerLocked) {
         speech.start();
       }
     } else if (result.gazeActive) {
@@ -430,4 +612,6 @@ async function startApp() {
 }
 
 setReadinessState(false);
+renderConversationHistory();
+loadSavedSettings();
 startApp();

@@ -54,12 +54,43 @@
             </div>
         </div>
 
-        <!-- 대화 버튼: 몸통 바로 아래에 떠 있는 트리거 -->
-        <button id="toggle-input-button" class="toggle-input-button" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-        </button>
+        <!-- 얼굴 클릭 설정 패널 -->
+        <section id="settings-panel" class="settings-panel hidden" aria-label="캐릭터 설정">
+            <div class="settings-section">
+                <p class="settings-title">컬러</p>
+                <div class="settings-options">
+                    <button class="palette-option" type="button" data-palette="mint" aria-label="민트"></button>
+                    <button class="palette-option" type="button" data-palette="coral" aria-label="코랄"></button>
+                    <button class="palette-option" type="button" data-palette="lemon" aria-label="레몬"></button>
+                    <button class="palette-option" type="button" data-palette="blue" aria-label="블루"></button>
+                </div>
+            </div>
+            <div class="settings-section">
+                <p class="settings-title">성격</p>
+                <div class="personality-options">
+                    <button class="personality-option" type="button" data-personality="calm">차분</button>
+                    <button class="personality-option" type="button" data-personality="bright">발랄</button>
+                    <button class="personality-option" type="button" data-personality="tsundere">시크</button>
+                    <button class="personality-option" type="button" data-personality="assistant">비서</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 액션 버튼 -->
+        <div class="action-row">
+            <button id="toggle-history-button" class="toggle-action-button" type="button" aria-label="대화 기록 열기">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3v5h5"></path>
+                    <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"></path>
+                    <path d="M12 7v5l3 2"></path>
+                </svg>
+            </button>
+            <button id="toggle-input-button" class="toggle-action-button" type="button" aria-label="텍스트 입력 열기">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </button>
+        </div>
 
         <!-- 상태 표시 -->
         <div class="status-area">
@@ -81,6 +112,17 @@
                 </svg>
             </button>
         </div>
+
+        <!-- 세션 대화 기록 서랍 -->
+        <aside id="history-drawer" class="history-drawer hidden" aria-label="세션 대화 기록">
+            <div class="history-header">
+                <span>이번 대화</span>
+                <button id="clear-history-button" class="clear-history-button" type="button">지우기</button>
+            </div>
+            <div id="history-list" class="history-list">
+                <p class="history-empty">대화가 아직 없어요.</p>
+            </div>
+        </aside>
     </div>
 
     <video id="webcam" autoplay playsinline style="display: none;"></video>
