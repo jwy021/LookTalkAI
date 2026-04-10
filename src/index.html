@@ -8,11 +8,16 @@
 </head>
 
 <body>
-    <div class="widget">
+    <div id="widget" class="widget">
         <div id="speech-bubble" class="bubble"></div>
     
         <h3>LookTalk</h3>
         <p id="status-text">AI 로딩 중...</p>
+        <button id="toggle-input-button" class="toggle-input-button" type="button">입력</button>
+        <div id="input-row" class="input-row hidden">
+            <input id="text-input" type="text" placeholder="텍스트 입력" maxlength="120">
+            <button id="send-button" type="button">전송</button>
+        </div>
     </div>
 
     <video id="webcam" autoplay playsinline style="display: none;"></video>

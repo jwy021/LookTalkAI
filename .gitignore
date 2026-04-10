@@ -10,3 +10,4 @@ npm-debug.log*
 # (선택) 맥북 사용자라면 찌꺼기 파일 무시
 .DS_Store
 test
+.env.example

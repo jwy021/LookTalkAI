@@ -3,8 +3,10 @@ body {
     overflow: hidden;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     height: 100vh;
+    padding: 88px 12px 12px;
+    box-sizing: border-box;
     background-color: transparent;
     /* 배경 투명 */
 }
@@ -12,7 +14,7 @@ body {
 /* ⭐️ 말풍선 스타일 (위젯 위에 배치) */
 .bubble {
     position: absolute;
-    bottom: 120%;
+    bottom: calc(100% + 12px);
     /* 위젯에서 위로 띄움 */
     background: rgba(255, 255, 255, 0.9);
     color: #000;
@@ -20,11 +22,15 @@ body {
     border-radius: 20px;
     font-size: 14px;
     font-weight: 500;
-    max-width: 200px;
-    min-width: 50px;
+    max-width: 320px;
+    min-width: 180px;
+    left: 50%;
+    transform: translateX(-50%);
     text-align: center;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-    word-break: break-all;
+    word-break: keep-all;
+    white-space: normal;
+    line-height: 1.45;
     display: none;
     /* 기본은 숨김 */
     z-index: 999;
@@ -47,16 +53,21 @@ body {
 .widget {
     position: relative;
     /* 말풍선 배치를 위한 기준점 */
-    width: 150px;
-    height: 150px;
+    width: 240px;
+    min-height: 190px;
     background-color: rgba(0, 0, 0, 0.8);
-    border-radius: 50%;
+    border-radius: 28px;
     color: white;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    gap: 8px;
+    padding: 18px 16px;
+    box-sizing: border-box;
     font-family: 'Pretendard', sans-serif;
+    border: 2px solid transparent;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
     /* ⭐️ 드래그 활성화 */
     -webkit-app-region: drag;
@@ -65,9 +76,31 @@ body {
     cursor: grab;
 }
 
+.widget.recording {
+    border-color: #22c55e;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+    animation: recording-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+    0% {
+        border-color: rgba(34, 197, 94, 0.55);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.28);
+    }
+
+    50% {
+        border-color: rgba(74, 222, 128, 1);
+        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.08);
+    }
+
+    100% {
+        border-color: rgba(34, 197, 94, 0.55);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.28);
+    }
+}
+
 /* ⭐️ 위젯 내부 요소들이 마우스 클릭 가로채지 못하게 설정 */
 .widget h3,
-.widget p,
 .bubble {
     pointer-events: none;
 }
@@ -75,4 +108,60 @@ body {
 .widget h3,
 .widget p {
     margin: 5px 0;
+}
+
+.input-row {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    -webkit-app-region: no-drag;
+}
+
+.input-row.hidden {
+    display: none;
+}
+
+.toggle-input-button {
+    border: none;
+    border-radius: 12px;
+    padding: 8px 14px;
+    background-color: rgba(255, 255, 255, 0.16);
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+}
+
+.toggle-input-button:hover {
+    background-color: rgba(255, 255, 255, 0.24);
+}
+
+#text-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+#text-input:focus {
+    outline: 2px solid rgba(96, 165, 250, 0.7);
+}
+
+#send-button {
+    border: none;
+    border-radius: 12px;
+    padding: 10px 12px;
+    background-color: #2563eb;
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+}
+
+#send-button:hover {
+    background-color: #1d4ed8;
 }
