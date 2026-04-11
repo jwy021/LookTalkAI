@@ -5,6 +5,7 @@ import { FaceTracker } from './faceTracker.js';
 import { SpeechHandler } from './speechHandler.js';
 import { ROBOT_STATE } from './constants.js'; // 상수 임포트 추가
 import { AiClient } from './aiClient.js';
+import { TtsService } from './ttsService.js';
 
 const ui = new UIController();
 const theme = new ThemeManager();
@@ -156,6 +157,8 @@ async function requestAi(payload) {
     ui.setRobotState(ROBOT_STATE.HAPPY);
     ui.showBubble(response.reply, appSettings.bubbleDurationMs);
     history.addMessage('assistant', response.reply, appSettings.historyPersistenceEnabled);
+    // AI가 말을 할 때 TTS로 읽어줍니다.
+    TtsService.speak(response.reply, personality);
   } else {
     console.error("AI Response Error:", response.error);
     ui.setRobotState(ROBOT_STATE.ERROR);
@@ -265,6 +268,13 @@ function setupSettings() {
       appSettings = theme.loadSettings(); // 동기화
       updateSettingsUI();
     });
+  });
+}
+
+// ── 마우스 눈동자 추적 리스너 ──
+if (window.lookTalkAPI.onMouseMoveExternal) {
+  window.lookTalkAPI.onMouseMoveExternal((coords) => {
+    ui.updateEyeGaze(coords.x, coords.y);
   });
 }
 

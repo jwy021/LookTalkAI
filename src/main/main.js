@@ -85,6 +85,19 @@ function createWindow() {
   };
   win.on('moved', saveWindowPosition);
   win.on('close', saveWindowPosition);
+
+  // 마우스 위치를 추적해서 프론트엔드로 쏴주는 로직
+  setInterval(() => {
+    if (win && !win.isDestroyed()) {
+      const cursor = screen.getCursorScreenPoint();
+      const bounds = win.getBounds();
+      // 창 기준 상대 좌표로 계산해서 보냄
+      win.webContents.send('mouse-move-external', {
+        x: cursor.x - bounds.x,
+        y: cursor.y - bounds.y
+      });
+    }
+  }, 50);
 }
 
 app.whenReady().then(createWindow);

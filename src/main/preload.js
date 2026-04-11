@@ -9,5 +9,7 @@ contextBridge.exposeInMainWorld('lookTalkAPI', {
     // 3. 앱 종료
     closeApp: () => ipcRenderer.send('close-app'),
     // 4. AI 응답 요청 (비동기)
-    processAiRequest: (payload) => ipcRenderer.invoke('process-ai-request', payload)
+    processAiRequest: (payload) => ipcRenderer.invoke('process-ai-request', payload),
+    // 5. 외부 마우스 위치 데이터 받는 통로
+    onMouseMoveExternal: (callback) => ipcRenderer.on('mouse-move-external', (_event, coords) => callback(coords))
 });
