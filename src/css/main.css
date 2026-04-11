@@ -1,167 +1,1099 @@
-body {
+/* ============================================================
+   LookTalk AI – 귀여운 로봇 캐릭터 UI
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap');
+
+/* ── 전역 ── */
+* {
     margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --robot-body: #24313a;
+    --robot-face: #182127;
+    --eye-bg: #ffffff;
+    --pupil: #24313a;
+    --cheek: rgba(255, 146, 122, 0.35);
+    --accent: #38d6b5;
+    --accent-glow: rgba(56, 214, 181, 0.35);
+    --listening: #4ade80;
+    --thinking: #facc15;
+    --error: #f87171;
+    --done: #60a5fa;
+    --bubble-bg: rgba(255, 255, 255, 0.92);
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+body {
     overflow: hidden;
     display: flex;
-    justify-content: center;
-    align-items: flex-start;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
     height: 100vh;
-    padding: 88px 12px 12px;
-    box-sizing: border-box;
+    padding-top: 92px;
     background-color: transparent;
-    /* 배경 투명 */
+    font-family: 'Nunito', sans-serif;
+    user-select: none;
 }
 
-/* ⭐️ 말풍선 스타일 (위젯 위에 배치) */
+/* ── 말풍선 ── */
 .bubble {
-    position: absolute;
-    bottom: calc(100% + 12px);
-    /* 위젯에서 위로 띄움 */
-    background: rgba(255, 255, 255, 0.9);
-    color: #000;
+    position: fixed;
+    top: auto;
+    bottom: calc(100% - 132px);
+    left: 50%;
+    transform: translateX(-50%) scale(0.92);
+    background: var(--bubble-bg);
+    backdrop-filter: blur(12px);
+    color: #1e1f2e;
     padding: 12px 18px;
     border-radius: 20px;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 700;
     max-width: 320px;
-    min-width: 180px;
-    left: 50%;
-    transform: translateX(-50%);
+    min-width: 150px;
+    max-height: 150px;
     text-align: center;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
     word-break: keep-all;
-    white-space: normal;
-    line-height: 1.45;
+    line-height: 1.5;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     display: none;
-    /* 기본은 숨김 */
     z-index: 999;
-    /* 말풍선 자체는 드래그되지 않도록 설정 (선택사항) */
+    opacity: 0;
+    transition: opacity 0.35s ease, transform 0.35s ease;
     -webkit-app-region: no-drag;
+    pointer-events: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(30, 31, 46, 0.18) transparent;
 }
 
-/* 말풍선 꼬리표 */
+.bubble.visible {
+    display: block;
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+}
+
+/* 말풍선 꼬리 */
 .bubble::after {
     content: '';
     position: absolute;
     top: 100%;
     left: 50%;
     transform: translateX(-50%);
-    border-width: 10px;
+    border-width: 8px;
     border-style: solid;
-    border-color: rgba(255, 255, 255, 0.9) transparent transparent transparent;
+    border-color: var(--bubble-bg) transparent transparent transparent;
 }
 
+.bubble::-webkit-scrollbar {
+    width: 4px;
+}
+
+.bubble::-webkit-scrollbar-thumb {
+    background: rgba(30, 31, 46, 0.18);
+    border-radius: 999px;
+}
+
+/* ── 위젯 컨테이너 ── */
 .widget {
     position: relative;
-    /* 말풍선 배치를 위한 기준점 */
-    width: 240px;
-    min-height: 190px;
-    background-color: rgba(0, 0, 0, 0.8);
-    border-radius: 28px;
-    color: white;
+    width: 164px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
-    gap: 8px;
-    padding: 18px 16px;
-    box-sizing: border-box;
-    font-family: 'Pretendard', sans-serif;
-    border: 2px solid transparent;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
-    /* ⭐️ 드래그 활성화 */
+    gap: 4px;
+    padding-bottom: 6px;
     -webkit-app-region: drag;
-    /* ⭐️ 글씨 선택 방지 */
-    user-select: none;
     cursor: grab;
 }
 
-.widget.recording {
-    border-color: #22c55e;
-    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
-    animation: recording-pulse 1.2s ease-in-out infinite;
+/* ── 안테나 ── */
+.antenna {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: -6px;
+    z-index: 10;
+    animation: antenna-idle 3s ease-in-out infinite;
 }
 
-@keyframes recording-pulse {
-    0% {
-        border-color: rgba(34, 197, 94, 0.55);
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.28);
+.antenna-stem {
+    width: 3px;
+    height: 16px;
+    background: linear-gradient(to top, var(--robot-body), var(--accent));
+    border-radius: 2px;
+}
+
+.antenna-ball {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent-glow), 0 0 20px var(--accent-glow);
+    transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+
+@keyframes antenna-idle {
+
+    0%,
+    100% {
+        transform: rotate(-3deg);
     }
 
     50% {
-        border-color: rgba(74, 222, 128, 1);
-        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.08);
-    }
-
-    100% {
-        border-color: rgba(34, 197, 94, 0.55);
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.28);
+        transform: rotate(3deg);
     }
 }
 
-/* ⭐️ 위젯 내부 요소들이 마우스 클릭 가로채지 못하게 설정 */
-.widget h3,
-.bubble {
+/* ══════════════════════════════════════════════
+   몸체 영역 (얼굴 + 손을 감싸는 래퍼)
+   ══════════════════════════════════════════════ */
+.body-area {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-panel {
+    position: absolute;
+    top: 26px;
+    left: calc(100% + 6px);
+    width: 138px;
+    max-height: 500px;
+    padding: 10px;
+    border-radius: 16px;
+    background: rgba(24, 33, 39, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    -webkit-app-region: no-drag;
+    z-index: 30;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.settings-panel::before {
+    content: '';
+    position: absolute;
+    top: 18px;
+    right: 100%;
+    border-width: 7px;
+    border-style: solid;
+    border-color: transparent rgba(24, 33, 39, 0.96) transparent transparent;
+}
+
+.settings-panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.settings-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+}
+
+.settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-title {
+    font-size: 11px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.62);
+    letter-spacing: 0.2px;
+}
+
+.settings-options,
+.personality-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.palette-option {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+}
+
+.palette-option[data-palette="mint"] {
+    background: linear-gradient(135deg, #24313a 30%, #38d6b5 100%);
+}
+
+.palette-option[data-palette="coral"] {
+    background: linear-gradient(135deg, #3a2a30 30%, #ff7d7d 100%);
+}
+
+.palette-option[data-palette="lemon"] {
+    background: linear-gradient(135deg, #353127 30%, #f4cf4f 100%);
+}
+
+.palette-option[data-palette="blue"] {
+    background: linear-gradient(135deg, #243245 30%, #5eb6ff 100%);
+}
+
+.personality-option {
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 11px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.option-pill-group {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.setting-pill {
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 10px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.palette-option.selected,
+.personality-option.selected,
+.setting-pill.selected {
+    outline: 2px solid rgba(255, 255, 255, 0.82);
+    outline-offset: 1px;
+}
+
+.personality-option.selected,
+.setting-pill.selected {
+    color: white;
+    background: rgba(56, 214, 181, 0.14);
+}
+
+/* ══════════════════════════════════════════════
+   플로팅 손 (body-area 기준 절대 위치)
+   ══════════════════════════════════════════════ */
+.hand {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    z-index: 5;
+    pointer-events: none;
+    -webkit-app-region: no-drag;
+    transition: all 0.5s var(--spring);
+}
+
+.hand-inner {
+    width: 100%;
+    height: 100%;
+    background: var(--robot-body);
+    border-radius: 50%;
+    box-shadow:
+        inset 0 -2px 6px rgba(0, 0, 0, 0.2),
+        inset 0 1px 3px rgba(255, 255, 255, 0.05);
+    border: 1.5px solid rgba(255, 255, 255, 0.06);
+    transition: transform 0.5s var(--spring);
+}
+
+.left-hand {
+    left: -22px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.right-hand {
+    right: -22px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* ── 상태별 손 제스처 ── */
+
+/* idle: 양 옆에서 살짝 흔들림 */
+.widget[data-state="idle"] .left-hand {
+    animation: hand-bob-left 2.5s ease-in-out infinite;
+}
+.widget[data-state="idle"] .right-hand {
+    animation: hand-bob-right 2.5s ease-in-out infinite 0.4s;
+}
+
+@keyframes hand-bob-left {
+    0%, 100% { transform: translateY(-50%) rotate(0deg); }
+    50% { transform: translateY(calc(-50% - 5px)) rotate(-5deg); }
+}
+
+@keyframes hand-bob-right {
+    0%, 100% { transform: translateY(-50%) rotate(0deg); }
+    50% { transform: translateY(calc(-50% - 5px)) rotate(5deg); }
+}
+
+/* listening: 손을 위로 들어 올려 신남 */
+.widget[data-state="listening"] .left-hand {
+    left: -32px;
+    top: 10%;
+    transform: translateY(0) rotate(-15deg);
+    animation: hand-excited-left 0.5s var(--spring) infinite alternate;
+}
+.widget[data-state="listening"] .right-hand {
+    right: -32px;
+    top: 10%;
+    transform: translateY(0) rotate(15deg);
+    animation: hand-excited-right 0.5s var(--spring) infinite alternate;
+}
+
+@keyframes hand-excited-left {
+    from { transform: rotate(-15deg) translateY(0); }
+    to { transform: rotate(-22deg) translateY(-5px); }
+}
+
+@keyframes hand-excited-right {
+    from { transform: rotate(15deg) translateY(0); }
+    to { transform: rotate(22deg) translateY(-5px); }
+}
+
+/* thinking: 오른손으로 턱 괴기 */
+.widget[data-state="thinking"] .left-hand {
+    left: -26px;
+    top: 55%;
+    transform: translateY(-50%);
+    animation: none;
+}
+.widget[data-state="thinking"] .right-hand {
+    right: -6px;
+    top: 85%;
+    transform: translateY(0) rotate(-10deg);
+    animation: none;
+}
+
+/* happy: 만세! */
+.widget[data-state="happy"] .left-hand {
+    left: -36px;
+    top: -10%;
+    transform: rotate(-30deg);
+    animation: hand-celebrate-left 0.6s var(--spring) infinite alternate;
+}
+.widget[data-state="happy"] .right-hand {
+    right: -36px;
+    top: -10%;
+    transform: rotate(30deg);
+    animation: hand-celebrate-right 0.6s var(--spring) infinite alternate;
+}
+
+@keyframes hand-celebrate-left {
+    from { transform: rotate(-30deg) translateY(0); }
+    to { transform: rotate(-42deg) translateY(-7px); }
+}
+
+@keyframes hand-celebrate-right {
+    from { transform: rotate(30deg) translateY(0); }
+    to { transform: rotate(42deg) translateY(-7px); }
+}
+
+/* error: 머리를 감싸 쥐기 */
+.widget[data-state="error"] .left-hand {
+    left: -8px;
+    top: 2%;
+    transform: rotate(12deg);
+    animation: hand-panic 0.25s ease-in-out infinite alternate;
+}
+.widget[data-state="error"] .right-hand {
+    right: -8px;
+    top: 2%;
+    transform: rotate(-12deg);
+    animation: hand-panic 0.25s ease-in-out infinite alternate 0.12s;
+}
+
+@keyframes hand-panic {
+    from { transform: translateY(0); }
+    to { transform: translateY(-4px); }
+}
+
+/* sleeping: 손이 축 늘어짐 */
+.widget[data-state="sleeping"] .left-hand {
+    left: -20px;
+    top: 75%;
+    transform: translateY(0) rotate(8deg);
+    animation: none;
+    opacity: 0.5;
+}
+.widget[data-state="sleeping"] .right-hand {
+    right: -20px;
+    top: 75%;
+    transform: translateY(0) rotate(-8deg);
+    animation: none;
+    opacity: 0.5;
+}
+
+/* ── 로봇 얼굴 (본체) ── */
+.robot-face {
+    width: 128px;
+    height: 110px;
+    background: var(--robot-body);
+    border-radius: 36px 36px 46px 46px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    position: relative;
+    overflow: visible;
+    box-shadow:
+        inset 0 -4px 12px rgba(0, 0, 0, 0.2),
+        inset 0 2px 6px rgba(255, 255, 255, 0.04);
+    border: 2px solid rgba(255, 255, 255, 0.06);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    -webkit-app-region: no-drag;
+    cursor: pointer;
+}
+
+/* 상태별 테두리 글로우 */
+.widget[data-state="listening"] .robot-face {
+    border-color: rgba(74, 222, 128, 0.5);
+    box-shadow:
+        0 0 16px rgba(74, 222, 128, 0.15),
+        inset 0 -4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.widget[data-state="thinking"] .robot-face {
+    border-color: rgba(250, 204, 21, 0.5);
+    box-shadow:
+        0 0 16px rgba(250, 204, 21, 0.15),
+        inset 0 -4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.widget[data-state="error"] .robot-face {
+    border-color: rgba(248, 113, 113, 0.5);
+    box-shadow:
+        0 0 16px rgba(248, 113, 113, 0.15),
+        inset 0 -4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* ── 눈 ── */
+.eyes {
+    display: flex;
+    gap: 22px;
+    margin-top: 4px;
+}
+
+.eye {
+    width: 32px;
+    height: 32px;
+    background: var(--eye-bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease, height 0.25s ease, border-radius 0.25s ease;
+}
+
+.pupil {
+    width: 14px;
+    height: 14px;
+    background: var(--pupil);
+    border-radius: 50%;
+    transition: transform 0.15s ease;
+    position: relative;
+}
+
+.pupil::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+}
+
+/* 눈 깜빡임 */
+.eye.blink {
+    height: 4px;
+    border-radius: 16px;
+}
+
+.eye.blink .pupil {
+    opacity: 0;
+}
+
+/* 상태별 눈 모양 */
+/* 듣는 중: 눈이 커짐 */
+.widget[data-state="listening"] .eye {
+    transform: scale(1.15);
+}
+
+/* 생각 중: 눈이 옆으로 */
+.widget[data-state="thinking"] .pupil {
+    animation: thinking-eyes 1.6s ease-in-out infinite;
+}
+
+@keyframes thinking-eyes {
+
+    0%,
+    100% {
+        transform: translateX(-3px);
+    }
+
+    50% {
+        transform: translateX(3px);
+    }
+}
+
+/* 에러: X 눈 */
+.widget[data-state="error"] .eye {
+    background: transparent;
+}
+
+.widget[data-state="error"] .pupil {
+    opacity: 0;
+}
+
+.widget[data-state="error"] .eye::before,
+.widget[data-state="error"] .eye::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 3px;
+    background: var(--error);
+    border-radius: 2px;
+}
+
+.widget[data-state="error"] .eye::before {
+    transform: rotate(45deg);
+}
+
+.widget[data-state="error"] .eye::after {
+    transform: rotate(-45deg);
+}
+
+/* 하트 눈 (답변 완료) */
+.widget[data-state="happy"] .eye {
+    background: transparent;
+    overflow: visible;
+}
+
+.widget[data-state="happy"] .pupil {
+    opacity: 0;
+}
+
+.widget[data-state="happy"] .eye::before {
+    content: '♥';
+    position: absolute;
+    font-size: 22px;
+    color: #ff6b9d;
+    animation: heart-beat 0.8s ease-in-out infinite;
+}
+
+@keyframes heart-beat {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+}
+
+/* 잠자기 (얼굴 없음) */
+.widget[data-state="sleeping"] .eye {
+    height: 4px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.widget[data-state="sleeping"] .pupil {
+    opacity: 0;
+}
+
+/* ── 볼터치 ── */
+.cheeks {
+    display: flex;
+    gap: 60px;
+    position: absolute;
+    top: 52px;
     pointer-events: none;
 }
 
-.widget h3,
-.widget p {
-    margin: 5px 0;
+.cheek {
+    width: 16px;
+    height: 10px;
+    background: var(--cheek);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.5s ease;
 }
 
+/* 행복/듣기 상태에서 볼터치 보이기 */
+.widget[data-state="happy"] .cheek,
+.widget[data-state="listening"] .cheek {
+    opacity: 1;
+}
+
+/* ── 입 ── */
+.mouth {
+    margin-top: 2px;
+    display: flex;
+    justify-content: center;
+}
+
+.mouth-shape {
+    width: 20px;
+    height: 10px;
+    border: 3px solid rgba(255, 255, 255, 0.5);
+    border-top: none;
+    border-radius: 0 0 14px 14px;
+    transition: all 0.3s ease;
+}
+
+/* 듣는 중: 입 크게 */
+.widget[data-state="listening"] .mouth-shape {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 3px solid rgba(74, 222, 128, 0.6);
+    border-top: 3px solid rgba(74, 222, 128, 0.6);
+    animation: mouth-listening 0.6s ease-in-out infinite;
+}
+
+@keyframes mouth-listening {
+
+    0%,
+    100% {
+        transform: scaleY(1);
+    }
+
+    50% {
+        transform: scaleY(0.7);
+    }
+}
+
+/* 생각 중: 입 꼬물 */
+.widget[data-state="thinking"] .mouth-shape {
+    width: 14px;
+    height: 8px;
+    border-color: rgba(250, 204, 21, 0.5);
+    animation: mouth-thinking 1s ease-in-out infinite;
+}
+
+@keyframes mouth-thinking {
+
+    0%,
+    100% {
+        transform: translateX(-2px);
+    }
+
+    50% {
+        transform: translateX(2px);
+    }
+}
+
+/* 에러: 입 뒤집기 */
+.widget[data-state="error"] .mouth-shape {
+    border: 3px solid rgba(248, 113, 113, 0.6);
+    border-bottom: none;
+    border-top: none;
+    border-radius: 14px 14px 0 0;
+    border-top: 3px solid rgba(248, 113, 113, 0.6);
+}
+
+/* 행복: 웃는 입 */
+.widget[data-state="happy"] .mouth-shape {
+    width: 24px;
+    height: 12px;
+    border-color: rgba(255, 107, 157, 0.7);
+}
+
+/* 잠자기: 작은 입 */
+.widget[data-state="sleeping"] .mouth-shape {
+    width: 10px;
+    height: 5px;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ── 안테나 볼 상태 색상 ── */
+.widget[data-state="listening"] .antenna-ball {
+    background: var(--listening);
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.5), 0 0 24px rgba(74, 222, 128, 0.3);
+}
+
+.widget[data-state="listening"] .antenna-stem {
+    background: linear-gradient(to top, var(--robot-body), var(--listening));
+}
+
+.widget[data-state="thinking"] .antenna-ball {
+    background: var(--thinking);
+    box-shadow: 0 0 12px rgba(250, 204, 21, 0.5), 0 0 24px rgba(250, 204, 21, 0.3);
+    animation: thinking-glow 1s ease-in-out infinite;
+}
+
+.widget[data-state="thinking"] .antenna-stem {
+    background: linear-gradient(to top, var(--robot-body), var(--thinking));
+}
+
+@keyframes thinking-glow {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.widget[data-state="error"] .antenna-ball {
+    background: var(--error);
+    box-shadow: 0 0 12px rgba(248, 113, 113, 0.5), 0 0 24px rgba(248, 113, 113, 0.3);
+}
+
+.widget[data-state="error"] .antenna-stem {
+    background: linear-gradient(to top, var(--robot-body), var(--error));
+}
+
+.widget[data-state="happy"] .antenna-ball {
+    background: #ff6b9d;
+    box-shadow: 0 0 12px rgba(255, 107, 157, 0.5), 0 0 24px rgba(255, 107, 157, 0.3);
+}
+
+.widget[data-state="happy"] .antenna-stem {
+    background: linear-gradient(to top, var(--robot-body), #ff6b9d);
+}
+
+.widget[data-state="sleeping"] .antenna-ball {
+    background: rgba(124, 106, 255, 0.3);
+    box-shadow: 0 0 6px rgba(124, 106, 255, 0.15);
+}
+
+.widget[data-state="idle"][data-ready="ready"] .antenna-ball {
+    background: var(--listening);
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.5), 0 0 24px rgba(74, 222, 128, 0.3);
+}
+
+.widget[data-state="idle"][data-ready="ready"] .antenna-stem {
+    background: linear-gradient(to top, var(--robot-body), var(--listening));
+}
+
+.widget[data-state="idle"][data-ready="not-ready"] .antenna-ball,
+.widget[data-state="sleeping"][data-ready="not-ready"] .antenna-ball {
+    background: var(--error);
+    box-shadow: 0 0 12px rgba(248, 113, 113, 0.45), 0 0 24px rgba(248, 113, 113, 0.22);
+}
+
+.widget[data-state="idle"][data-ready="not-ready"] .antenna-stem,
+.widget[data-state="sleeping"][data-ready="not-ready"] .antenna-stem {
+    background: linear-gradient(to top, var(--robot-body), var(--error));
+}
+
+.widget[data-state="sleeping"] .antenna {
+    animation: antenna-sleep 4s ease-in-out infinite;
+}
+
+@keyframes antenna-sleep {
+
+    0%,
+    100% {
+        transform: rotate(-1deg);
+    }
+
+    50% {
+        transform: rotate(1deg);
+    }
+}
+
+/* ── 상태 텍스트 ── */
+.status-area {
+    margin-top: 8px;
+    text-align: center;
+    pointer-events: none;
+}
+
+.status-text {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.55);
+    letter-spacing: 0.3px;
+    min-height: 14px;
+    transition: color 0.3s ease;
+}
+
+/* ── 액션 버튼 줄 ── */
+.action-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: -18px;
+    z-index: 8;
+    -webkit-app-region: no-drag;
+}
+
+.toggle-action-button {
+    border: none;
+    border-radius: 999px;
+    width: 28px;
+    height: 28px;
+    background: rgba(56, 214, 181, 0.14);
+    color: rgba(255, 255, 255, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    -webkit-app-region: no-drag;
+    border: 1px solid rgba(56, 214, 181, 0.1);
+}
+
+.toggle-action-button:hover {
+    color: rgba(255, 255, 255, 0.95);
+    transform: translateY(-2px) scale(1.04);
+    background: rgba(56, 214, 181, 0.22);
+    border-color: rgba(56, 214, 181, 0.18);
+}
+
+/* ── 입력 토글 버튼 ── */
+.toggle-input-button {
+    margin-top: 0;
+    z-index: auto;
+}
+
+.toggle-input-button:hover {
+    transform: translateY(-2px) scale(1.04);
+}
+
+/* ── 입력 행 ── */
 .input-row {
     width: 100%;
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
+    margin-top: -10px;
     -webkit-app-region: no-drag;
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .input-row.hidden {
     display: none;
-}
-
-.toggle-input-button {
-    border: none;
-    border-radius: 12px;
-    padding: 8px 14px;
-    background-color: rgba(255, 255, 255, 0.16);
-    color: white;
-    font-size: 13px;
-    cursor: pointer;
-    -webkit-app-region: no-drag;
-}
-
-.toggle-input-button:hover {
-    background-color: rgba(255, 255, 255, 0.24);
+    opacity: 0;
+    transform: translateY(-8px);
 }
 
 #text-input {
     flex: 1;
     min-width: 0;
     border: none;
-    border-radius: 12px;
-    padding: 10px 12px;
-    font-size: 13px;
-    box-sizing: border-box;
+    border-radius: 14px;
+    padding: 9px 12px;
+    font-size: 12px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.9);
+    color: #1e1f2e;
+    transition: box-shadow 0.2s ease;
+}
+
+#text-input::placeholder {
+    color: rgba(30, 31, 46, 0.4);
 }
 
 #text-input:focus {
-    outline: 2px solid rgba(96, 165, 250, 0.7);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
 #send-button {
     border: none;
-    border-radius: 12px;
-    padding: 10px 12px;
-    background-color: #2563eb;
+    border-radius: 14px;
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(180deg, #4ae3c4 0%, #38d6b5 100%);
     color: white;
-    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    transition: all 0.2s ease;
     -webkit-app-region: no-drag;
+    flex-shrink: 0;
 }
 
 #send-button:hover {
-    background-color: #1d4ed8;
+    background: linear-gradient(180deg, #55e8cb 0%, #3cdcbc 100%);
+    transform: translateY(-1px) scale(1.03);
+}
+
+#send-button:active {
+    transform: scale(0.95);
+}
+
+#send-icon,
+#send-spinner {
+    display: block;
+    flex-shrink: 0;
+}
+
+#send-icon {
+    transform: translateX(-0.5px);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ── 세션 대화 기록 서랍 ── */
+.history-drawer {
+    width: 100%;
+    max-height: 188px;
+    margin-top: 6px;
+    padding: 10px 10px 12px;
+    border-radius: 18px;
+    background: rgba(24, 33, 39, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+    -webkit-app-region: no-drag;
+}
+
+.history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.clear-history-button {
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 10px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.clear-history-button:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 145px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.history-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.history-item.user {
+    align-items: flex-end;
+}
+
+.history-item.assistant {
+    align-items: flex-start;
+}
+
+.history-role {
+    font-size: 10px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.history-message {
+    max-width: 88%;
+    padding: 8px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    line-height: 1.45;
+    word-break: keep-all;
+}
+
+.history-item.user .history-message {
+    background: rgba(56, 214, 181, 0.16);
+    color: rgba(255, 255, 255, 0.9);
+    border-bottom-right-radius: 6px;
+}
+
+.history-item.assistant .history-message {
+    background: rgba(255, 255, 255, 0.9);
+    color: #1e1f2e;
+    border-bottom-left-radius: 6px;
+}
+
+.history-empty {
+    padding: 18px 0 10px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── 녹음 중 펄스 (위젯 전체) ── */
+.widget[data-state="listening"] .robot-face {
+    animation: recording-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+
+    0%,
+    100% {
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.4),
+            0 0 12px rgba(74, 222, 128, 0.1),
+            inset 0 -4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    50% {
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.4),
+            0 0 24px rgba(74, 222, 128, 0.25),
+            inset 0 -4px 12px rgba(0, 0, 0, 0.2);
+    }
+}
+
+/* ── 바운스 등장 애니메이션 ── */
+.widget {
+    animation: robot-entrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes robot-entrance {
+    from {
+        opacity: 0;
+        transform: scale(0.5) translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }

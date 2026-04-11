@@ -8,16 +8,150 @@
 </head>
 
 <body>
+    <!-- 말풍선 -->
+    <div id="speech-bubble" class="bubble"></div>
+
+    <!-- 로봇 캐릭터 위젯 -->
     <div id="widget" class="widget">
-        <div id="speech-bubble" class="bubble"></div>
-    
-        <h3>LookTalk</h3>
-        <p id="status-text">AI 로딩 중...</p>
-        <button id="toggle-input-button" class="toggle-input-button" type="button">입력</button>
-        <div id="input-row" class="input-row hidden">
-            <input id="text-input" type="text" placeholder="텍스트 입력" maxlength="120">
-            <button id="send-button" type="button">전송</button>
+        <!-- 안테나 (드래그 가능 영역) -->
+        <div class="antenna drag-handle">
+            <div class="antenna-stem"></div>
+            <div class="antenna-ball" id="antenna-ball"></div>
         </div>
+
+        <!-- 몸체 영역 (얼굴 + 손) -->
+        <div class="body-area">
+            <!-- 왼쪽 손 -->
+            <div class="hand left-hand" id="left-hand">
+                <div class="hand-inner"></div>
+            </div>
+
+            <!-- 오른쪽 손 -->
+            <div class="hand right-hand" id="right-hand">
+                <div class="hand-inner"></div>
+            </div>
+
+            <!-- 얼굴 영역 (드래그 가능 영역) -->
+            <div class="robot-face drag-handle" id="robot-face">
+                <!-- 눈 -->
+                <div class="eyes">
+                    <div class="eye left-eye" id="left-eye">
+                        <div class="pupil" id="left-pupil"></div>
+                    </div>
+                    <div class="eye right-eye" id="right-eye">
+                        <div class="pupil" id="right-pupil"></div>
+                    </div>
+                </div>
+                <!-- 볼터치 -->
+                <div class="cheeks">
+                    <div class="cheek left-cheek"></div>
+                    <div class="cheek right-cheek"></div>
+                </div>
+                <!-- 입 -->
+                <div class="mouth" id="mouth">
+                    <div class="mouth-shape" id="mouth-shape"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 얼굴 클릭 설정 패널 -->
+        <section id="settings-panel" class="settings-panel hidden" aria-label="캐릭터 설정">
+            <div class="settings-section">
+                <p class="settings-title">컬러</p>
+                <div class="settings-options">
+                    <button class="palette-option" type="button" data-palette="mint" aria-label="민트"></button>
+                    <button class="palette-option" type="button" data-palette="coral" aria-label="코랄"></button>
+                    <button class="palette-option" type="button" data-palette="lemon" aria-label="레몬"></button>
+                    <button class="palette-option" type="button" data-palette="blue" aria-label="블루"></button>
+                </div>
+            </div>
+            <div class="settings-section">
+                <p class="settings-title">성격</p>
+                <div class="personality-options">
+                    <button class="personality-option" type="button" data-personality="calm">차분</button>
+                    <button class="personality-option" type="button" data-personality="bright">발랄</button>
+                    <button class="personality-option" type="button" data-personality="tsundere">시크</button>
+                    <button class="personality-option" type="button" data-personality="assistant">비서</button>
+                </div>
+            </div>
+            <div class="settings-section">
+                <p class="settings-title">답변 길이</p>
+                <div class="option-pill-group">
+                    <button class="setting-pill" type="button" data-setting-key="responseLength" data-setting-value="short">짧게</button>
+                    <button class="setting-pill" type="button" data-setting-key="responseLength" data-setting-value="medium">보통</button>
+                </div>
+            </div>
+            <div class="settings-section">
+                <p class="settings-title">말풍선 시간</p>
+                <div class="option-pill-group">
+                    <button class="setting-pill" type="button" data-setting-key="bubbleDurationMs" data-setting-value="3000">3초</button>
+                    <button class="setting-pill" type="button" data-setting-key="bubbleDurationMs" data-setting-value="5000">5초</button>
+                    <button class="setting-pill" type="button" data-setting-key="bubbleDurationMs" data-setting-value="8000">8초</button>
+                </div>
+            </div>
+            <div class="settings-section">
+                <p class="settings-title">음성 트리거</p>
+                <div class="option-pill-group">
+                    <button class="setting-pill" type="button" data-setting-key="voiceTriggerEnabled" data-setting-value="true">켜기</button>
+                    <button class="setting-pill" type="button" data-setting-key="voiceTriggerEnabled" data-setting-value="false">끄기</button>
+                </div>
+            </div>
+            <div class="settings-section">
+                <p class="settings-title">기록 저장</p>
+                <div class="option-pill-group">
+                    <button class="setting-pill" type="button" data-setting-key="historyPersistenceEnabled" data-setting-value="true">켜기</button>
+                    <button class="setting-pill" type="button" data-setting-key="historyPersistenceEnabled" data-setting-value="false">끄기</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 액션 버튼 -->
+        <div class="action-row">
+            <button id="toggle-history-button" class="toggle-action-button" type="button" aria-label="대화 기록 열기">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3v5h5"></path>
+                    <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"></path>
+                    <path d="M12 7v5l3 2"></path>
+                </svg>
+            </button>
+            <button id="toggle-input-button" class="toggle-action-button" type="button" aria-label="텍스트 입력 열기">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- 상태 표시 -->
+        <div class="status-area">
+            <p id="status-text" class="status-text">로딩 중...</p>
+        </div>
+
+        <!-- 입력 행 -->
+        <div id="input-row" class="input-row hidden">
+            <input id="text-input" type="text" placeholder="말해볼래?" maxlength="120">
+            <button id="send-button" type="button">
+                <!-- 전송 아이콘 -->
+                <svg id="send-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <!-- 로딩 스피너 (기본 숨김) -->
+                <svg id="send-spinner" class="send-spinner hidden" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                    <path d="M12 2a10 10 0 0 1 10 10"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- 세션 대화 기록 서랍 -->
+        <aside id="history-drawer" class="history-drawer hidden" aria-label="세션 대화 기록">
+            <div class="history-header">
+                <span>이번 대화</span>
+                <button id="clear-history-button" class="clear-history-button" type="button">지우기</button>
+            </div>
+            <div id="history-list" class="history-list">
+                <p class="history-empty">대화가 아직 없어요.</p>
+            </div>
+        </aside>
     </div>
 
     <video id="webcam" autoplay playsinline style="display: none;"></video>
