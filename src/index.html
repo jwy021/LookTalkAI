@@ -13,6 +13,13 @@
 
     <!-- 로봇 캐릭터 위젯 -->
     <div id="widget" class="widget">
+        <!-- 상태 표시 인디케이터 (머리 위) -->
+        <div class="status-indicator">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </div>
+
         <!-- 안테나 (드래그 가능 영역) -->
         <div class="antenna drag-handle">
             <div class="antenna-stem"></div>
@@ -121,14 +128,13 @@
             </button>
         </div>
 
-        <!-- 상태 표시 -->
+        <!-- 상태 표시 (텍스트만 유지, 숨김 상태) -->
         <div class="status-area">
-            <p id="status-text" class="status-text">로딩 중...</p>
+            <p id="status-text" class="status-text" style="display:none;"></p>
         </div>
 
         <!-- 입력 행 -->
         <div id="input-row" class="input-row hidden">
-            <input id="text-input" type="text" placeholder="말해볼래?" maxlength="120">
             <button id="screen-context-button" class="screen-context-button" type="button" aria-label="이번 질문에 화면 포함">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 4h18v12H3z"></path>
@@ -136,6 +142,7 @@
                     <path d="M12 16v4"></path>
                 </svg>
             </button>
+            <input id="text-input" type="text" placeholder="말해볼래?" maxlength="120">
             <button id="send-button" type="button">
                 <!-- 전송 아이콘 -->
                 <svg id="send-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

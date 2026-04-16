@@ -13,8 +13,8 @@ let isHistoryDrawerOpen = false;
 let isSettingsPanelOpen = false;
 const collapsedWindowWidth = 220;
 const expandedSettingsWindowWidth = 460;
-const collapsedWindowHeight = 350;
-const expandedWindowHeight = 540;
+const collapsedWindowHeight = 400;
+const expandedWindowHeight = 580;
 const expandedSettingsWindowHeight = 680;
 
 function loadEnvFile() {
@@ -402,10 +402,11 @@ function createWindow() {
   win = new BrowserWindow({
     width: collapsedWindowWidth,
     height: collapsedWindowHeight,
-    x: savedBounds.x,  // ⭐️ 불러온 X 좌표
-    y: savedBounds.y,  // ⭐️ 불러온 Y 좌표
+    x: savedBounds.x,
+    y: savedBounds.y,
     transparent: true,
     frame: false,
+    hasShadow: false,
     alwaysOnTop: true,
     skipTaskbar: true,
     webPreferences: { nodeIntegration: true, contextIsolation: false }

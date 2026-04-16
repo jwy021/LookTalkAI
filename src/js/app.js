@@ -477,11 +477,17 @@ function handleVolumeChange(rms) {
   // 안테나 볼 – 볼륨에 따라 크기
   const ballScale = 1 + normalized * 0.5;
   antennaBall.style.transform = `scale(${ballScale.toFixed(2)})`;
+
+  // 얼굴 네온 글로우 효과 퍼짐 (마이크 수음)
+  const glowSize = 16 + normalized * 40;
+  const glowOpacity = 0.15 + normalized * 0.6;
+  robotFace.style.boxShadow = `0 0 ${glowSize}px rgba(74, 222, 128, ${glowOpacity.toFixed(2)}), inset 0 -12px 20px rgba(0, 0, 0, 0.35), inset 0 4px 10px rgba(255, 255, 255, 0.08), 0 6px 16px rgba(0, 0, 0, 0.25)`;
 }
 
 function resetVolumeEffects() {
   mouthShape.style.transform = '';
   antennaBall.style.transform = '';
+  robotFace.style.boxShadow = '';
 }
 
 // ══════════════════════════════════════════════
@@ -538,21 +544,23 @@ async function requestAiResponse(userText) {
       throw new Error(response?.error || 'AI 응답 생성에 실패했습니다.');
     }
 
+    setRobotState('talking');
     showResponseBubble(response.reply, () => {
       isSpeechTriggerLocked = false;
+      setRobotState('happy');
+      setTimeout(() => {
+        if (currentState === 'happy') {
+          setRobotState('idle');
+          statusText.innerText = '';
+          statusText.style.color = 'transparent';
+        }
+      }, 3500);
     });
     addConversationMessage('assistant', response.reply);
-    setRobotState('happy');
     statusText.innerText = '';
     statusText.style.color = 'transparent';
 
-    setTimeout(() => {
-      if (currentState === 'happy') {
-        setRobotState('idle');
-        statusText.innerText = '';
-        statusText.style.color = 'transparent';
-      }
-    }, 3500);
+
   } catch (error) {
     console.error('❌ 렌더러 AI 요청 실패:', error);
     const errorMessage = error?.message?.includes('화면 캡처')
@@ -746,7 +754,8 @@ function loop() {
       handRaisedSince = 0;
       if (currentState !== 'thinking' &&
           currentState !== 'happy' &&
-          currentState !== 'error') {
+          currentState !== 'error' &&
+          currentState !== 'talking') {
         setRobotState('sleeping');
         setReadinessState(false);
         statusText.innerText = '';
@@ -772,7 +781,7 @@ function loop() {
       }
     } else if (result.gazeActive) {
       handRaisedSince = 0;
-      if (!isListeningSessionActive && !speech.isRecording && !isGeneratingResponse) {
+      if (!isListeningSessionActive && !speech.isRecording && !isGeneratingResponse && currentState !== 'talking' && currentState !== 'happy' && currentState !== 'error') {
         setRobotState('idle');
         setReadinessState(true);
         statusText.innerText = '';
@@ -780,7 +789,7 @@ function loop() {
       }
     } else {
       handRaisedSince = 0;
-      if (!isListeningSessionActive && !speech.isRecording && !isGeneratingResponse) {
+      if (!isListeningSessionActive && !speech.isRecording && !isGeneratingResponse && currentState !== 'talking' && currentState !== 'happy' && currentState !== 'error') {
         setRobotState('idle');
         setReadinessState(false);
         statusText.innerText = '';
