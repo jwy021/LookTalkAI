@@ -34,7 +34,7 @@ body {
     justify-content: flex-start;
     align-items: center;
     height: 100vh;
-    padding-top: 92px;
+    padding-top: 140px;
     background-color: transparent;
     font-family: 'Nunito', sans-serif;
     user-select: none;
@@ -43,7 +43,7 @@ body {
 /* ── 말풍선 ── */
 .bubble {
     position: fixed;
-    bottom: calc(100% - 132px);
+    bottom: calc(100% - 125px);
     left: 50%;
     transform: translateX(-50%) scale(0.92);
     background: var(--bubble-bg);
@@ -55,7 +55,7 @@ body {
     font-weight: 700;
     max-width: 320px;
     min-width: 150px;
-    max-height: calc(100vh - 180px);
+    max-height: 115px;
     text-align: center;
     word-break: keep-all;
     line-height: 1.5;
@@ -78,17 +78,7 @@ body {
     pointer-events: auto;
 }
 
-/* 말풍선 꼬리 */
-.bubble::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border-width: 8px;
-    border-style: solid;
-    border-color: var(--bubble-bg) transparent transparent transparent;
-}
+
 
 .bubble::-webkit-scrollbar {
     width: 4px;
@@ -165,7 +155,7 @@ body {
     top: 26px;
     left: calc(100% + 6px);
     width: 138px;
-    max-height: 500px;
+    max-height: 250px;
     padding: 10px;
     border-radius: 16px;
     background: rgba(24, 33, 39, 0.96);
@@ -852,7 +842,7 @@ body {
     border-radius: 999px;
     width: 28px;
     height: 28px;
-    background: rgba(56, 214, 181, 0.14);
+    background: rgba(56, 214, 181, 0.3);
     color: rgba(255, 255, 255, 0.72);
     display: flex;
     align-items: center;
@@ -918,7 +908,7 @@ body {
     border-radius: 12px;
     width: 34px;
     height: 34px;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.2);
     color: rgba(255, 255, 255, 0.62);
     display: flex;
     align-items: center;

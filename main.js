@@ -254,20 +254,25 @@ function getVertexAiGenerateContentUrl() {
   return `${endpoint}/v1/projects/${vertexAiProjectId}/locations/${vertexAiLocation}/publishers/google/models/${geminiModel}:generateContent`;
 }
 
-async function generateAiReply(userText, personality = 'calm', responseLength = 'short', screenContext = null) {
-  const personalityPrompt = personalityPrompts[personality] || personalityPrompts.calm;
-  const lengthConfig = responseLengthConfigs[responseLength] || responseLengthConfigs.short;
-
-  if (!vertexAiProjectId) {
-    throw new Error('GOOGLE_CLOUD_PROJECT 환경 변수가 설정되지 않았습니다.');
-  }
-
-  const accessToken = await getGoogleAccessToken();
-
-  // LLM으로 보내는 실제 입력값을 디버그 콘솔에 기록
-  console.log('[LLM][INPUT]', userText);
-
+function buildConversationContents(userText, conversationContext = [], screenContext = null) {
+  const safeContext = Array.isArray(conversationContext) ? conversationContext : [];
+  const contents = safeContext
+    .filter((message) => ['user', 'assistant'].includes(message?.role) && typeof message?.text === 'string' && message.text.trim())
+    .slice(-10)
+    .map((message) => ({
+      role: message.role === 'assistant' ? 'model' : 'user',
+      parts: [
+        {
+          text: message.text.trim()
+        }
+      ]
+    }));
   const userParts = [];
+
+  // Vertex AI 대화 입력은 사용자 발화부터 시작하도록 맞춘다.
+  while (contents[0]?.role === 'model') {
+    contents.shift();
+  }
 
   if (screenContext?.imageBase64 && screenContext?.mimeType) {
     userParts.push({
@@ -290,6 +295,28 @@ async function generateAiReply(userText, personality = 'calm', responseLength = 
     console.log('[LLM][SCREEN_CONTEXT]', 'none');
   }
 
+  contents.push({
+    role: 'user',
+    parts: userParts
+  });
+
+  return contents;
+}
+
+async function generateAiReply(userText, personality = 'calm', responseLength = 'short', screenContext = null, conversationContext = []) {
+  const personalityPrompt = personalityPrompts[personality] || personalityPrompts.calm;
+  const lengthConfig = responseLengthConfigs[responseLength] || responseLengthConfigs.short;
+
+  if (!vertexAiProjectId) {
+    throw new Error('GOOGLE_CLOUD_PROJECT 환경 변수가 설정되지 않았습니다.');
+  }
+
+  const accessToken = await getGoogleAccessToken();
+
+  // LLM으로 보내는 실제 입력값을 디버그 콘솔에 기록
+  console.log('[LLM][INPUT]', userText);
+  console.log('[LLM][CONTEXT_COUNT]', Array.isArray(conversationContext) ? conversationContext.length : 0);
+
   const response = await fetch(
     getVertexAiGenerateContentUrl(),
     {
@@ -308,12 +335,7 @@ async function generateAiReply(userText, personality = 'calm', responseLength = 
             }
           ]
         },
-        contents: [
-          {
-            role: 'user',
-            parts: userParts
-          }
-        ],
+        contents: buildConversationContents(userText, conversationContext, screenContext),
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: lengthConfig.maxTokens
@@ -491,13 +513,14 @@ ipcMain.handle('generate-ai-response', async (_event, payload) => {
   const personality = typeof payload?.personality === 'string' ? payload.personality : 'calm';
   const responseLength = typeof payload?.responseLength === 'string' ? payload.responseLength : 'short';
   const screenContext = payload?.screenContext || null;
+  const conversationContext = Array.isArray(payload?.conversationContext) ? payload.conversationContext : [];
 
   if (!normalizedText) {
     return { ok: false, error: '전송할 음성 텍스트가 없습니다.' };
   }
 
   try {
-    const reply = await generateAiReply(normalizedText, personality, responseLength, screenContext);
+    const reply = await generateAiReply(normalizedText, personality, responseLength, screenContext, conversationContext);
     return { ok: true, reply };
   } catch (error) {
     console.error('❌ AI 응답 생성 실패:', error);

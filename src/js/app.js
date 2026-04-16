@@ -117,6 +117,16 @@ function addConversationMessage(role, text) {
   saveConversationHistory();
 }
 
+function getRecentConversationContext() {
+  return conversationHistory
+    .slice(0, -1)
+    .slice(-10)
+    .map(({ role, text }) => ({
+      role,
+      text
+    }));
+}
+
 function renderConversationHistory() {
   if (conversationHistory.length === 0) {
     historyList.innerHTML = '<p class="history-empty">대화가 아직 없어요.</p>';
@@ -404,7 +414,10 @@ function showResponseBubble(text, onTypingComplete) {
         speechBubble.textContent += chars[charIndex];
       }
       charIndex++;
-      speechBubble.scrollTop = speechBubble.scrollHeight;
+      const maxScroll = speechBubble.scrollHeight - speechBubble.clientHeight;
+      if (maxScroll > 5) {
+        speechBubble.scrollTop = maxScroll;
+      }
       typingTimerId = setTimeout(typeNext, 35 + Math.random() * 25);
     } else {
       // 타이핑 완료 → 커서 제거
@@ -515,6 +528,7 @@ async function requestAiResponse(userText) {
   try {
     const response = await ipcRenderer.invoke('generate-ai-response', {
       userText: trimmedText,
+      conversationContext: getRecentConversationContext(),
       personality: currentPersonality,
       responseLength: appSettings.responseLength,
       screenContext: await captureCurrentScreenContext()
